@@ -1,5 +1,5 @@
 import type { ModelId } from "../lib/data";
-import { cfg, data } from "../lib/data";
+import { cfg, data, int } from "../lib/data";
 
 const W = 760;
 const H = 440;
@@ -10,7 +10,7 @@ interface Column {
   sub?: string;
 }
 
-/** Fully connected layers rendered in Stellar White, Quantum Violet and Particle Magenta. */
+/** Fully connected layers rendered in Stellar White, Quantum Violet and Particle Magenta, with animated forward flow. */
 function LayerNet({ columns, variant }: { columns: Column[]; variant: "linear" | "shallow" | "deep" }) {
   const x = (i: number) => 70 + (i * (W - 140)) / (columns.length - 1);
   const top = 46;
@@ -32,6 +32,10 @@ function LayerNet({ columns, variant }: { columns: Column[]; variant: "linear" |
     return colIdx % 2 === 0 ? "#F4F1EB" : "#A78BFA";
   };
 
+  const flowColor = variant === "linear" ? "#F4F1EB" : "#A78BFA";
+  const midY = top + usable / 2;
+  const flowTracks = [-66, 0, 66];
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="net" role="img">
       {columns.slice(0, -1).map((c, i) =>
@@ -50,6 +54,25 @@ function LayerNet({ columns, variant }: { columns: Column[]; variant: "linear" |
           )),
         ),
       )}
+
+      {/* Animated information pulses flowing sequentially from input to score */}
+      {flowTracks.map((dy, tIdx) => {
+        const pts = columns
+          .map((c, i) => {
+            const yArr = ys(c.drawn);
+            const targetY = c.drawn === 1 ? midY : yArr[Math.min(yArr.length - 1, Math.max(0, Math.round(((yArr.length - 1) * (tIdx + 1)) / 4)))];
+            return `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${(c.drawn === 1 ? midY : targetY + dy * 0.08).toFixed(1)}`;
+          })
+          .join(" ");
+        const begin = `${tIdx * 0.85}s`;
+        return (
+          <circle key={tIdx} r={3.2} fill={tIdx === 1 ? "#F0B95A" : flowColor} opacity={0} className="net-flow-dot">
+            <animateMotion dur="3.4s" begin={begin} repeatCount="indefinite" path={pts} />
+            <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="3.4s" begin={begin} repeatCount="indefinite" />
+          </circle>
+        );
+      })}
+
       {columns.map((c, i) => {
         const fill = nodeColor(i);
         const isInput = i === 0;
@@ -86,6 +109,10 @@ function Trees() {
   const tree = (cx: number, key: number, lean: number) => {
     const levels = [[0], [-32, 32], [-50, -17, 17, 50]];
     const y = (l: number) => 70 + l * 100;
+    const leafIdx = (key + lean) % 4;
+    const midDx = levels[1][leafIdx < 2 ? 0 : 1];
+    const leafDx = levels[2][leafIdx];
+    const flowPath = `M${cx},${y(0)} L${cx + midDx},${y(1)} L${cx + leafDx},${y(2)}`;
     return (
       <g key={key} className="net-col" style={{ animationDelay: `${key * 0.22}s` }}>
         {levels.slice(0, -1).flatMap((lv, l) =>
@@ -104,6 +131,10 @@ function Trees() {
             )),
           ),
         )}
+        <circle r={3} fill="#F4F1EB" opacity={0} className="net-flow-dot">
+          <animateMotion dur="2.6s" begin={`${key * 0.5}s`} repeatCount="indefinite" path={flowPath} />
+          <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="2.6s" begin={`${key * 0.5}s`} repeatCount="indefinite" />
+        </circle>
         {levels.flatMap((lv, l) =>
           lv.map((dx, k) => {
             const active = l === 2 && (k + lean) % 3 === 0;
@@ -144,7 +175,7 @@ function Trees() {
   );
 }
 
-/** Residual MLP in Stellar White, Quantum Violet and luminous Particle Magenta skip connections. */
+/** Residual MLP in Stellar White, Quantum Violet and luminous Particle Magenta skip connections with animated dual-path flow. */
 function Residual() {
   const blocks = cfg<number[]>("resnet_mlp", "hidden_sizes");
   const width = blocks[0];
@@ -179,24 +210,20 @@ function Residual() {
         <text x={106} y={mid - 78} textAnchor="middle" className="net-sub">Linear {width}</text>
       </g>
 
-      {/* Residual blocks with prominent Particle Magenta skip arcs */}
+      {/* Residual blocks with prominent Particle Magenta skip arcs and synchronized dual-path pulses */}
       {blocks.map((_, i) => {
         const x0 = bx(i);
         const skipStart = x0 - 22;
         const skipEnd = x0 + 78;
         const arcPeakY = mid - 122;
         const apexX = (skipStart + skipEnd) / 2;
+        const skipPath = `M${skipStart},${mid} C${skipStart},${mid - 162} ${skipEnd},${mid - 162} ${skipEnd},${mid - 14}`;
+        const blockPath = `M${skipStart},${mid} L${x0 + 18},${mid - 28} L${x0 + 38},${mid + 24} L${skipEnd},${mid}`;
+        const phase = `${(i * 0.7).toFixed(2)}s`;
         return (
           <g key={i} className="net-col" style={{ animationDelay: `${0.25 + i * 0.28}s` }}>
             {/* Prominent luminous residual skip arc */}
-            <path
-              d={`M${skipStart},${mid} C${skipStart},${mid - 162} ${skipEnd},${mid - 162} ${skipEnd},${mid - 14}`}
-              fill="none"
-              stroke={magenta}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              filter="url(#skip-glow)"
-            />
+            <path d={skipPath} fill="none" stroke={magenta} strokeWidth={2.5} strokeLinecap="round" filter="url(#skip-glow)" />
             {/* Directional chevron at skip apex */}
             <path
               d={`M${apexX - 4},${arcPeakY - 4} L${apexX + 5},${arcPeakY} L${apexX - 4},${arcPeakY + 4}`}
@@ -212,6 +239,16 @@ function Residual() {
             <rect x={x0} y={mid - 84} width={56} height={168} rx={6} fill="#050609" stroke={violet} strokeOpacity={0.65} strokeWidth={1.2} />
             <rect x={x0 + 12} y={mid - 68} width={12} height={136} rx={2} fill={violet} />
             <rect x={x0 + 32} y={mid - 34} width={12} height={68} rx={2} fill={white} fillOpacity={0.88} />
+
+            {/* Animated dual-path information flow: x over skip + F(x) through block */}
+            <circle r={3.6} fill={white} opacity={0} className="net-flow-dot">
+              <animateMotion dur="2.8s" begin={phase} repeatCount="indefinite" path={skipPath} />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="2.8s" begin={phase} repeatCount="indefinite" />
+            </circle>
+            <circle r={3.2} fill="#F0B95A" opacity={0} className="net-flow-dot">
+              <animateMotion dur="2.8s" begin={phase} repeatCount="indefinite" path={blockPath} />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="2.8s" begin={phase} repeatCount="indefinite" />
+            </circle>
 
             {/* Summation junction */}
             <circle cx={skipEnd} cy={mid} r={12.5} fill="#050609" stroke={magenta} strokeWidth={2} />
@@ -232,8 +269,145 @@ function Residual() {
         block: Linear {width * 2} (violet) → Linear {width} (white)
       </text>
       <text x={380} y={H - 22} textAnchor="middle" className="net-sub net-sub-magenta">
-        magenta skip arcs add each block’s input directly to its output
+        y = x + F(x): skip arc carries x straight to + while the block learns residual F(x)
       </text>
+    </svg>
+  );
+}
+
+/** Interactive side-by-side comparison of Ordinary Deep MLP vs. Residual MLP using exact repo architectures. */
+export function CompareDeepResidual({ flowKey = 0 }: { flowKey?: number }) {
+  const deepSizes = cfg<number[]>("deep_mlp", "hidden_sizes");
+  const resSizes = cfg<number[]>("resnet_mlp", "hidden_sizes");
+  const deepParams = data.configs.deep_mlp.parameterCount ?? 0;
+  const resParams = data.configs.resnet_mlp.parameterCount ?? 0;
+
+  const white = "#F4F1EB";
+  const violet = "#A78BFA";
+  const magenta = "#D946EF";
+  const gold = "#F0B95A";
+
+  // Top lane: Deep MLP (y = 104)
+  const deepY = 104;
+  const deepCols = [
+    { x: 64, n: 6, label: "28 in", fill: "var(--bg)", stroke: white },
+    ...deepSizes.map((w, idx) => ({
+      x: 172 + idx * 92,
+      n: 7,
+      label: String(w),
+      fill: idx % 2 === 0 ? violet : magenta,
+      stroke: idx % 2 === 0 ? violet : magenta,
+    })),
+    { x: 676, n: 1, label: "score", fill: violet, stroke: white },
+  ];
+  const deepYs = (n: number) => Array.from({ length: n }, (_, k) => deepY + (k - (n - 1) / 2) * 14);
+  const deepFlow = `M64,${deepY} L172,${deepY} L264,${deepY} L356,${deepY} L448,${deepY} L540,${deepY} L676,${deepY}`;
+
+  // Bottom lane: Residual MLP (y = 318)
+  const resY = 324;
+  const resBx = (i: number) => 204 + i * 110;
+
+  return (
+    <svg key={flowKey} viewBox={`0 0 ${W} ${H}`} className="net net-compare" role="img" aria-label="Comparison between Ordinary Deep MLP and Residual MLP">
+      <defs>
+        <filter id="cmp-skip-glow" x="-20%" y="-40%" width="140%" height="180%">
+          <feGaussianBlur stdDeviation="2.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* ---- Top lane: Ordinary Deep MLP ---- */}
+      <text x={24} y={28} className="cmp-title" fill={violet}>
+        ORDINARY DEEP MLP · {deepSizes.length} × {deepSizes[0]} ({int(deepParams)} params)
+      </text>
+      <text x={736} y={28} textAnchor="end" className="cmp-eq">
+        y = F₅(…F₁(x)) · sequential rewrite
+      </text>
+
+      {deepCols.slice(0, -1).map((c, i) =>
+        deepYs(c.n).flatMap((y1, a) =>
+          deepYs(deepCols[i + 1].n).map((y2, b) => (
+            <line key={`d-${i}-${a}-${b}`} x1={c.x} y1={y1} x2={deepCols[i + 1].x} y2={y2} stroke={violet} strokeOpacity={0.14} strokeWidth={0.7} />
+          )),
+        ),
+      )}
+      {/* Sequential animated signal */}
+      <circle r={4} fill={gold} opacity={0} className="net-flow-dot">
+        <animateMotion dur="3.0s" repeatCount="indefinite" path={deepFlow} />
+        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="3.0s" repeatCount="indefinite" />
+      </circle>
+      <circle r={3.2} fill={white} opacity={0} className="net-flow-dot">
+        <animateMotion dur="3.0s" begin="1.5s" repeatCount="indefinite" path={deepFlow} />
+        <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="3.0s" begin="1.5s" repeatCount="indefinite" />
+      </circle>
+      {deepCols.map((c, i) => (
+        <g key={`dc-${i}`}>
+          {deepYs(c.n).map((y, k) => (
+            <circle key={k} cx={c.x} cy={y} r={c.n === 1 ? 7.5 : 3.6} fill={c.fill} stroke={c.stroke} strokeWidth={1.3} />
+          ))}
+          <text x={c.x} y={deepY + 62} textAnchor="middle" className="cmp-lbl">{c.label}</text>
+        </g>
+      ))}
+
+      {/* Divider */}
+      <line x1={24} y1={194} x2={736} y2={194} stroke="var(--graphite)" strokeWidth={1} />
+
+      {/* ---- Bottom lane: Residual MLP ---- */}
+      <text x={24} y={224} className="cmp-title" fill={magenta}>
+        RESIDUAL MLP · {resSizes.length} × {resSizes[0]} blocks ({int(resParams)} params)
+      </text>
+      <text x={736} y={224} textAnchor="end" className="cmp-eq cmp-eq-mag">
+        y = x + F(x) · identity skip preserved
+      </text>
+
+      <line x1={64} y1={resY} x2={682} y2={resY} stroke={white} strokeOpacity={0.32} strokeWidth={1.4} />
+      {[-34, -17, 0, 17, 34].map((dy) => (
+        <circle key={dy} cx={64} cy={resY + dy} r={3.6} fill="var(--bg)" stroke={white} strokeWidth={1.4} />
+      ))}
+      <text x={64} y={resY + 72} textAnchor="middle" className="cmp-lbl">28 in</text>
+
+      <rect x={118} y={resY - 40} width={14} height={80} rx={3} fill={violet} stroke={white} strokeOpacity={0.45} />
+      <text x={125} y={resY + 72} textAnchor="middle" className="cmp-lbl">Lin {resSizes[0]}</text>
+
+      {resSizes.map((w, i) => {
+        const x0 = resBx(i);
+        const s0 = x0 - 18;
+        const s1 = x0 + 68;
+        const skipPath = `M${s0},${resY} C${s0},${resY - 94} ${s1},${resY - 94} ${s1},${resY - 11}`;
+        const blkPath = `M${s0},${resY} L${x0 + 16},${resY - 18} L${x0 + 34},${resY + 16} L${s1},${resY}`;
+        const begin = `${(i * 0.65).toFixed(2)}s`;
+        return (
+          <g key={`rb-${i}`}>
+            <path d={skipPath} fill="none" stroke={magenta} strokeWidth={2.2} filter="url(#cmp-skip-glow)" />
+            <circle cx={s0} cy={resY} r={2.6} fill={magenta} />
+            <rect x={x0} y={resY - 48} width={48} height={96} rx={5} fill="#050609" stroke={violet} strokeOpacity={0.65} />
+            <rect x={x0 + 10} y={resY - 38} width={10} height={76} rx={2} fill={violet} />
+            <rect x={x0 + 28} y={resY - 19} width={10} height={38} rx={2} fill={white} fillOpacity={0.88} />
+
+            <circle r={3.4} fill={white} opacity={0} className="net-flow-dot">
+              <animateMotion dur="2.6s" begin={begin} repeatCount="indefinite" path={skipPath} />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="2.6s" begin={begin} repeatCount="indefinite" />
+            </circle>
+            <circle r={2.8} fill={gold} opacity={0} className="net-flow-dot">
+              <animateMotion dur="2.6s" begin={begin} repeatCount="indefinite" path={blkPath} />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.1;0.9;1" dur="2.6s" begin={begin} repeatCount="indefinite" />
+            </circle>
+
+            <circle cx={s1} cy={resY} r={10.5} fill="#050609" stroke={magenta} strokeWidth={1.8} />
+            <text x={s1} y={resY + 4.5} textAnchor="middle" className="net-plus">+</text>
+            <text x={x0 + 24} y={resY + 72} textAnchor="middle" className="cmp-lbl">
+              {w * 2}→{w}
+            </text>
+          </g>
+        );
+      })}
+
+      <circle cx={682} cy={resY} r={12} fill="none" stroke={magenta} strokeOpacity={0.45} />
+      <circle cx={682} cy={resY} r={7.5} fill={magenta} stroke={white} strokeWidth={1.4} />
+      <text x={682} y={resY + 72} textAnchor="middle" className="cmp-lbl">score</text>
     </svg>
   );
 }

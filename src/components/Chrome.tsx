@@ -4,16 +4,18 @@ interface Props {
   scene: number;
   step: number;
   steps: number[];
+  notesOpen: boolean;
   onPrev: () => void;
   onNext: () => void;
   onGoTo: (scene: number) => void;
   onFullscreen: () => void;
+  onToggleNotes: () => void;
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Persistent deck controls: counter, progress, previous/next, fullscreen. */
-export default function Chrome({ scene, step, steps, onPrev, onNext, onGoTo, onFullscreen }: Props) {
+/** Persistent deck controls: counter, progress, previous/next, notes, fullscreen. */
+export default function Chrome({ scene, step, steps, notesOpen, onPrev, onNext, onGoTo, onFullscreen, onToggleNotes }: Props) {
   const total = steps.length;
   const atStart = scene === 0 && step === 0;
   const atEnd = scene === total - 1 && step === steps[scene] - 1;
@@ -48,6 +50,11 @@ export default function Chrome({ scene, step, steps, onPrev, onNext, onGoTo, onF
         </button>
         <button type="button" onClick={onNext} disabled={atEnd} aria-label="Next">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+        </button>
+        <button type="button" onClick={onToggleNotes} className={notesOpen ? "is-active" : ""} aria-pressed={notesOpen} aria-label="Toggle speaker notes (N)" title="Speaker notes (N)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5.5 6.5h13M5.5 11.5h13M5.5 16.5h8.5" />
+          </svg>
         </button>
         <button type="button" onClick={onFullscreen} aria-label="Toggle full screen (F)" title="Full screen (F)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15" /></svg>

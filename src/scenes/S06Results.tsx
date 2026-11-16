@@ -3,13 +3,17 @@ import type { SceneProps } from "../App";
 import { RESULTS } from "../content";
 import { CountUp, Segmented, StepTabs } from "../components/common";
 import { GroupDots, Leaderboard, RocChart } from "../components/charts";
-import { BUDGET_LABEL, BUDGET_ORDER, data, int, type BudgetId } from "../lib/data";
+import { BUDGET_LABEL, BUDGET_ORDER, MODEL, data, f4, getRun, int, type BudgetId } from "../lib/data";
 
 const op = data.operatingPoints;
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 export default function S06Results({ step, setStep }: SceneProps) {
   const [budget, setBudget] = useState<BudgetId>("250k");
+  const res250 = getRun("250k", "resnet_mlp", "all");
+  const xgb250 = getRun("250k", "xgboost", "all");
+  const speedup = (res250.trainSeconds / xgb250.trainSeconds).toFixed(1);
+
   return (
     <div className="s06">
       <aside className="s06-hero">
@@ -31,10 +35,33 @@ export default function S06Results({ step, setStep }: SceneProps) {
           {step === 0 && (
             <>
               <Leaderboard budget="250k" group="all" />
-              <p className="body s06-op">
-                At the threshold chosen on validation for 50% signal efficiency, XGBoost rejects {pct(op.xgboost!.testBackgroundRejection)} of test background and logistic regression {pct(op.logreg!.testBackgroundRejection)}. This is a benchmark operating point, not a significance estimate.
-              </p>
-              <p className="note">All 28 features, 250k events. Values read from outputs/release/release_summary.json and the per-run metrics.json files.</p>
+              <div className="s06-tradeoff" aria-label="Performance versus training time trade-off">
+                <article className="s06-to-card s06-to-card--lead">
+                  <span className="s06-to-tag" style={{ color: MODEL.resnet_mlp.color }}>
+                    Highest discrimination
+                  </span>
+                  <p className="s06-to-stat">
+                    <strong>Residual MLP</strong>
+                    <span className="num">{f4(res250.rocAuc)} ROC-AUC · {res250.trainSeconds.toFixed(1)}s</span>
+                  </p>
+                  <p className="s06-to-desc">
+                    Achieves the highest ROC-AUC in this benchmark across all 28 features.
+                  </p>
+                </article>
+                <article className="s06-to-card s06-to-card--fast">
+                  <span className="s06-to-tag" style={{ color: MODEL.xgboost.color }}>
+                    Performance / time trade-off
+                  </span>
+                  <p className="s06-to-stat">
+                    <strong>XGBoost</strong>
+                    <span className="num">{f4(xgb250.rocAuc)} ROC-AUC · {xgb250.trainSeconds.toFixed(1)}s</span>
+                  </p>
+                  <p className="s06-to-desc">
+                    Trains {speedup}× faster; at 50% validation signal efficiency it rejects {pct(op.xgboost!.testBackgroundRejection)} of test background (vs. {pct(op.logreg!.testBackgroundRejection)} for LogReg).
+                  </p>
+                </article>
+              </div>
+              <p className="note">All 28 features, 250k events. Operating-point rejection is a benchmark reference, not a significance estimate.</p>
             </>
           )}
           {step === 1 && (

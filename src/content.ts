@@ -130,9 +130,9 @@ export const RESULTS = {
   headline: "At 250k events the residual network leads.",
   sub: `Held-out test set of ${int(b250.splitChecks.split_sizes.test)} events, identical for every model.`,
   hero: [
-    { label: "ROC-AUC", value: best250.rocAuc, note: "ranking quality; 0.5 is chance" },
-    { label: "PR-AUC", value: best250.prAuc, note: "average precision" },
-    { label: "Brier score", value: best250.brier, note: "probability error; lower is better" },
+    { label: "ROC-AUC", value: best250.rocAuc, note: "Probability a random signal outranks a random background (0.5 chance, 1.0 perfect)." },
+    { label: "PR-AUC", value: best250.prAuc, note: "Average precision across all thresholds; summarises purity vs. capture." },
+    { label: "Brier score", value: best250.brier, note: "Mean squared error of predicted probabilities against 0/1 labels (lower is better)." },
   ],
   views: ["Leaderboard", "ROC curves", "Feature groups"],
 };
@@ -144,12 +144,32 @@ export const SCALING = {
 
 export const WORKBENCH = {
   headline: "Every result can be opened.",
-  body: "A Streamlit dashboard that reads the saved run packages. It never trains a model at startup.",
+  body: "A Streamlit dashboard reading the saved 250k run packages directly from disk—never training a model at startup.",
   views: [
-    { file: "overview.png", name: "Artifact registry", body: "Discovers the saved runs, validates each against the artifact contract and reports the top observed run." },
-    { file: "dataset.png", name: "Dataset observatory", body: "Saved exploratory analysis: class balance, feature summaries, distributions and correlations." },
-    { file: "experiments.png", name: "Experiment comparison", body: "Leaderboard, feature-group comparison and training time across the loaded runs." },
-    { file: "validation.png", name: "Validation workbench", body: "ROC, precision-recall and calibration curves, training history and a threshold explorer on saved test predictions." },
+    {
+      file: "dataset.png",
+      name: "Dataset observatory",
+      tag: "Step 01 · Inputs & EDA",
+      body: "Inspects the 21 low-level kinematic inputs and 7 high-level invariant masses alongside distribution, correlation and class-balance tabs.",
+    },
+    {
+      file: "overview.png",
+      name: "Experiment registry",
+      tag: "Step 02 · Saved Runs",
+      body: "Discovers all 15 saved runs, verifies the higgs-split-v1 · seed 42 contract with 0 missing values, and surfaces the top observed run (0.8339).",
+    },
+    {
+      file: "experiments.png",
+      name: "Model comparison",
+      tag: "Step 03 · Cross-Run View",
+      body: "Filters across runs, 5 model families and 3 feature groups to compare the leaderboard, feature-group gains and compute efficiency.",
+    },
+    {
+      file: "validation.png",
+      name: "Validation workbench",
+      tag: "Step 04 · Curves & Thresholds",
+      body: "Overlays ROC, precision-recall and reliability calibration curves, MLP training history and interactive cutoff exploration on saved predictions.",
+    },
   ],
 };
 

@@ -126,15 +126,17 @@ export function GroupDots({ budget }: { budget: BudgetId }) {
 /* ---------------------------------------------------------------- scaling chart */
 export function ScalingChart({ group, reference }: { group: GroupId; reference?: { value: number; label: string } }) {
   const [hover, setHover] = useState<BudgetId | null>(null);
+  const [pinned, setPinned] = useState<BudgetId | null>(null);
+  const activeBudget = hover ?? pinned;
   const W = 980;
-  const H = 520;
-  const m = { l: 70, t: 24, r: 250, b: 60 };
+  const H = 532;
+  const m = { l: 70, t: 28, r: 250, b: 74 };
   const series = MODEL_ORDER.map((id) => ({ id, values: BUDGET_ORDER.map((b) => getRun(b, id, group).rocAuc) }));
   const all = series.flatMap((s) => s.values).concat(reference ? [reference.value] : []);
   const yMin = Math.floor((Math.min(...all) - 0.01) * 20) / 20;
   const yMax = Math.ceil((Math.max(...all) + 0.005) * 20) / 20;
   const rows = BUDGET_ORDER.map((b) => data.budgets[b].rows);
-  const x = (i: number) => lin(Math.log10(rows[0]), Math.log10(rows[2]), m.l + 30, W - m.r - 20)(Math.log10(rows[i]));
+  const x = (i: number) => lin(Math.log10(rows[0]), Math.log10(rows[2]), m.l + 44, W - m.r - 24)(Math.log10(rows[i]));
   const y = lin(yMin, yMax, H - m.b, m.t);
   const yTicks: number[] = [];
   for (let t = yMin; t <= yMax + 1e-9; t += 0.05) yTicks.push(Number(t.toFixed(2)));
@@ -143,22 +145,52 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
   const labels = series.map((s) => ({ id: s.id, value: s.values[2], y: y(s.values[2]) })).sort((a, b) => a.y - b.y);
   for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 28) labels[i].y = labels[i - 1].y + 28;
 
+  // Non-overlapping value callouts when inspecting 250k or 1M column
+  const activeIdx = activeBudget ? BUDGET_ORDER.indexOf(activeBudget) : -1;
+  const activeLabels =
+    activeIdx === 0 || activeIdx === 1
+      ? series
+        .map((s) => ({ id: s.id, value: s.values[activeIdx], y: y(s.values[activeIdx]) }))
+        .sort((a, b) => a.y - b.y)
+      : [];
+  for (let i = 1; i < activeLabels.length; i++) {
+    if (activeLabels[i].y - activeLabels[i - 1].y < 19) activeLabels[i].y = activeLabels[i - 1].y + 19;
+  }
+
   return (
-    <svg className="scaling" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Test ROC-AUC against sample size, ${group} features`} onMouseLeave={() => setHover(null)}>
+    <svg className="scaling" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Test ROC-AUC against sample size across three discrete budgets (250k, 1M, 2.5M), ${group} features`} onMouseLeave={() => setHover(null)}>
       <rect x={m.l} y={m.t} width={W - m.l - m.r} height={H - m.t - m.b} className="plot-surface" />
+      {BUDGET_ORDER.map((b, i) => {
+        const isActive = activeBudget === b;
+        return (
+          <rect
+            key={`band-${b}`}
+            x={x(i) - 34}
+            y={m.t}
+            width={68}
+            height={H - m.t - m.b}
+            className={`budget-band ${isActive ? "is-on" : ""}`}
+          />
+        );
+      })}
       {yTicks.map((t) => (
         <g key={t}>
           <line x1={m.l} y1={y(t)} x2={W - m.r} y2={y(t)} className="grid" />
           <text x={m.l - 12} y={y(t) + 5} textAnchor="end" className="tick">{t.toFixed(2)}</text>
         </g>
       ))}
-      {BUDGET_ORDER.map((b, i) => (
-        <g key={b}>
-          <line x1={x(i)} y1={m.t} x2={x(i)} y2={H - m.b} className={hover === b ? "grid grid-hover" : "grid"} />
-          <text x={x(i)} y={H - m.b + 26} textAnchor="middle" className="tick tick-strong">{BUDGET_LABEL[b]}</text>
-        </g>
-      ))}
-      <text x={(m.l + W - m.r) / 2} y={H - 6} textAnchor="middle" className="axis-title">Events in the sample (log scale)</text>
+      {BUDGET_ORDER.map((b, i) => {
+        const testCount = data.budgets[b].splitChecks.split_sizes.test;
+        const isActive = activeBudget === b;
+        return (
+          <g key={b}>
+            <line x1={x(i)} y1={m.t} x2={x(i)} y2={H - m.b} className={isActive ? "grid grid-hover" : "grid"} />
+            <text x={x(i)} y={H - m.b + 24} textAnchor="middle" className={`tick tick-strong ${isActive ? "is-gold" : ""}`}>{BUDGET_LABEL[b]}</text>
+            <text x={x(i)} y={H - m.b + 42} textAnchor="middle" className="tick-sub">{(testCount / 1000).toFixed(1).replace(".0", "")}k test</text>
+          </g>
+        );
+      })}
+      <text x={(m.l + W - m.r) / 2} y={H - 6} textAnchor="middle" className="axis-title">Discrete seeded event budgets (250k ⊂ 1M ⊂ 2.5M, log scale · no intermediate runs)</text>
       <text transform={`translate(18 ${(m.t + H - m.b) / 2}) rotate(-90)`} textAnchor="middle" className="axis-title">Test ROC-AUC</text>
       {reference && (
         <g className="reference">
@@ -174,15 +206,17 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
             <path d={"M" + s.values.map((v, k) => `${x(k).toFixed(1)},${y(v).toFixed(1)}`).join("L")} pathLength={1} className="curve" stroke={c} style={{ animationDelay: `${delay}s` }} />
             {s.values.map((v, k) => (
               <g key={k} className="pt" style={{ animationDelay: `${delay + 0.25 + k * 0.2}s` }}>
-                <circle cx={x(k)} cy={y(v)} r={6} fill={c} stroke="var(--bg)" strokeWidth={2} />
-                {hover === BUDGET_ORDER[k] && k < 2 && (
-                  <text x={x(k) + 10} y={y(v) - 8} className="pt-value">{f4(v)}</text>
-                )}
+                <circle cx={x(k)} cy={y(v)} r={activeBudget === BUDGET_ORDER[k] ? 7.5 : 6} fill={c} stroke="var(--bg)" strokeWidth={2} />
               </g>
             ))}
           </g>
         );
       })}
+      {activeLabels.map((al) => (
+        <text key={`al-${al.id}`} x={x(activeIdx) + 12} y={al.y + 4} className="pt-value" style={{ fill: MODEL[al.id].color }}>
+          {f4(al.value)}
+        </text>
+      ))}
       {labels.map((l, i) => (
         <g key={l.id} className="pt" style={{ animationDelay: `${1.5 + MODEL_ORDER.indexOf(l.id) * 0.4}s` }}>
           <path d={`M${x(2) + 9},${y(l.value)} L${W - m.r + 2},${l.y} H${W - m.r + 14}`} fill="none" stroke={MODEL[l.id].color} strokeWidth={1.5} />
@@ -192,7 +226,17 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
         </g>
       ))}
       {BUDGET_ORDER.map((b, i) => (
-        <rect key={b} x={x(i) - 60} y={m.t} width={120} height={H - m.b - m.t} fill="transparent" onMouseEnter={() => setHover(b)} />
+        <rect
+          key={b}
+          x={x(i) - 54}
+          y={m.t}
+          width={108}
+          height={H - m.b - m.t}
+          fill="transparent"
+          style={{ cursor: "pointer" }}
+          onMouseEnter={() => setHover(b)}
+          onClick={() => setPinned((p) => (p === b ? null : b))}
+        />
       ))}
     </svg>
   );

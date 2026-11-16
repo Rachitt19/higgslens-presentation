@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState, type ComponentType } from "react"
 import { AnimatePresence, MotionConfig, motion } from "motion/react";
 import CollisionField from "./three/CollisionField";
 import Chrome from "./components/Chrome";
+import SpeakerNotes from "./components/SpeakerNotes";
 import { useDeck, useReducedMotion } from "./lib/useDeck";
 import S01 from "./scenes/S01Collision";
 import S02 from "./scenes/S02Problem";
@@ -41,6 +42,7 @@ export default function App() {
   const reduced = useReducedMotion();
   const [scale, setScale] = useState(1);
   const [replayKey, setReplayKey] = useState(0);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [intro, setIntro] = useState(() => deck.scene === 0 && !reduced);
 
   // The deck is composed on a fixed 1600 × 900 stage and scaled to the screen,
@@ -59,9 +61,13 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.key === "r" || e.key === "R") && deck.scene === 0 && !e.metaKey && !e.ctrlKey) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if ((e.key === "r" || e.key === "R") && deck.scene === 0) {
         setIntro(true);
         setReplayKey((k) => k + 1);
+      } else if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        setNotesOpen((o) => !o);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -90,7 +96,18 @@ export default function App() {
               <Component step={deck.step} setStep={(s) => deck.goTo(deck.scene, s)} intro={intro} />
             </motion.section>
           </AnimatePresence>
-          <Chrome scene={deck.scene} step={deck.step} steps={STEPS} onPrev={deck.prev} onNext={deck.next} onGoTo={deck.goTo} onFullscreen={deck.toggleFullscreen} />
+          <Chrome
+            scene={deck.scene}
+            step={deck.step}
+            steps={STEPS}
+            notesOpen={notesOpen}
+            onPrev={deck.prev}
+            onNext={deck.next}
+            onGoTo={deck.goTo}
+            onFullscreen={deck.toggleFullscreen}
+            onToggleNotes={() => setNotesOpen((o) => !o)}
+          />
+          <SpeakerNotes open={notesOpen} scene={deck.scene} totalScenes={SCENES.length} onClose={() => setNotesOpen(false)} />
         </main>
       </div>
     </MotionConfig>

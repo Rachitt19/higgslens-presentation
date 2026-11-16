@@ -6,6 +6,7 @@ export default function S08Workbench({ step, setStep }: SceneProps) {
   return (
     <div className="s08">
       <div className="s08-text">
+        <span className="tag">Run inspection</span>
         <h2 className="headline">{WORKBENCH.headline}</h2>
         <p className="body">{WORKBENCH.body}</p>
         <ol>

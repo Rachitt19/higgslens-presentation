@@ -16,15 +16,32 @@ export default function S04Pipeline(_: SceneProps) {
   return (
     <div className="s04">
       <header className="s04-head">
-        <h2 className="headline">One protocol, from the archive to the artifact.</h2>
+        <div>
+          <span className="tag">Experimental protocol</span>
+          <h2 className="headline">One protocol, from the archive to the artifact.</h2>
+        </div>
         <p className="body">
           The same nine steps run for every model, at nested budgets of {budgets[0]}, {budgets[1]} and {budgets[2]} events.
         </p>
       </header>
       <svg className="s04-line" viewBox="0 0 1600 900" aria-hidden="true">
+        <defs>
+          <linearGradient id="pipeline-beam" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#A78BFA" />
+            <stop offset="55%" stopColor="#D946EF" />
+            <stop offset="100%" stopColor="#F0B95A" />
+          </linearGradient>
+          <filter id="pipeline-glow" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
         <path d={PATH} className="s04-rail" />
-        <path d={PATH} className="s04-beam" pathLength={1} />
-        <circle r="5" className="s04-pulse">
+        <path d={PATH} className="s04-beam" stroke="url(#pipeline-beam)" filter="url(#pipeline-glow)" pathLength={1} />
+        <circle r="4.5" className="s04-pulse">
           <animateMotion dur="9s" repeatCount="indefinite" path={PATH} />
         </circle>
       </svg>

@@ -19,13 +19,13 @@ export function Leaderboard({ budget, group }: { budget: BudgetId; group: GroupI
         <span>Train (s)</span>
       </div>
       {rows.map((r, i) => (
-        <div className="lb-row" key={r.run} style={{ animationDelay: `${0.15 + i * 0.16}s` }}>
+        <div className={`lb-row ${i === 0 ? "is-lead" : ""}`} key={r.run} style={{ animationDelay: `${0.15 + i * 0.16}s` }}>
           <span className="num lb-rank">{i + 1}</span>
           <span className="lb-name">{MODEL[r.model].label}</span>
           <span className="lb-bar">
             <i style={{ width: `${x(r.rocAuc)}%`, background: MODEL[r.model].color, animationDelay: `${0.3 + i * 0.16}s` }} />
           </span>
-          <span className="num lb-strong">{f4(r.rocAuc)}</span>
+          <span className={`num ${i === 0 ? "lb-gold" : "lb-strong"}`}>{f4(r.rocAuc)}</span>
           <span className="num">{f4(r.prAuc)}</span>
           <span className="num">{f4(r.brier)}</span>
           <span className="num">{r.trainSeconds.toFixed(1)}</span>
@@ -46,6 +46,7 @@ export function RocChart() {
   return (
     <div className="roc">
       <svg viewBox={`0 0 ${m.l + S + m.r} ${m.t + S + m.b}`} role="img" aria-label="ROC curves for the five all-feature models at 250k events">
+        <rect x={m.l} y={m.t} width={S} height={S} className="plot-surface" />
         {ticks.map((t) => (
           <g key={t}>
             <line x1={x(t)} y1={y(0)} x2={x(t)} y2={y(1)} className="grid" />
@@ -64,11 +65,11 @@ export function RocChart() {
       </svg>
       <div className="legend">
         <p className="legend-title">Test ROC-AUC</p>
-        {order.map((id) => (
+        {order.map((id, idx) => (
           <div key={id}>
             <i style={{ background: MODEL[id].color }} />
             <span>{MODEL[id].label}</span>
-            <b className="num">{f4(getRun("250k", id, "all").rocAuc)}</b>
+            <b className={`num ${idx === 0 ? "is-gold" : ""}`}>{f4(getRun("250k", id, "all").rocAuc)}</b>
           </div>
         ))}
       </div>
@@ -144,6 +145,7 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
 
   return (
     <svg className="scaling" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Test ROC-AUC against sample size, ${group} features`} onMouseLeave={() => setHover(null)}>
+      <rect x={m.l} y={m.t} width={W - m.l - m.r} height={H - m.t - m.b} className="plot-surface" />
       {yTicks.map((t) => (
         <g key={t}>
           <line x1={m.l} y1={y(t)} x2={W - m.r} y2={y(t)} className="grid" />
@@ -185,7 +187,7 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
         <g key={l.id} className="pt" style={{ animationDelay: `${1.5 + MODEL_ORDER.indexOf(l.id) * 0.4}s` }}>
           <path d={`M${x(2) + 9},${y(l.value)} L${W - m.r + 2},${l.y} H${W - m.r + 14}`} fill="none" stroke={MODEL[l.id].color} strokeWidth={1.5} />
           <text x={W - m.r + 22} y={l.y + 5} className="end-label">{MODEL[l.id].label}</text>
-          <text x={W - 4} y={l.y + 5} textAnchor="end" className="end-value">{f4(l.value)}</text>
+          <text x={W - 4} y={l.y + 5} textAnchor="end" className={`end-value ${l.id === "resnet_mlp" ? "is-gold" : ""}`}>{f4(l.value)}</text>
           {i === 0 && <text x={W - 4} y={l.y - 22} textAnchor="end" className="tick">at 2.5M</text>}
         </g>
       ))}

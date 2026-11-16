@@ -1,7 +1,15 @@
 import type { SceneProps } from "../App";
 import { MODELS } from "../content";
 import { ModelDiagram } from "../components/diagrams";
-import { MODEL, MODEL_ORDER } from "../lib/data";
+import { MODEL, MODEL_ORDER, type ModelId } from "../lib/data";
+
+const CATEGORY: Record<ModelId, string> = {
+  logreg: "Linear baseline",
+  xgboost: "Gradient-boosted trees",
+  mlp: "Shallow neural network",
+  deep_mlp: "Deep neural network",
+  resnet_mlp: "Residual neural network",
+};
 
 export default function S05Models({ step, setStep }: SceneProps) {
   const id = MODEL_ORDER[step];
@@ -9,6 +17,7 @@ export default function S05Models({ step, setStep }: SceneProps) {
   return (
     <div className="s05">
       <div className="s05-list">
+        <span className="tag">Model architectures</span>
         <h2 className="headline">Five models, from a line to a residual network.</h2>
         <ol>
           {MODEL_ORDER.map((mid, i) => (
@@ -22,6 +31,7 @@ export default function S05Models({ step, setStep }: SceneProps) {
         </ol>
       </div>
       <div className="s05-detail" key={id}>
+        <span className="s05-cat" style={{ color: MODEL[id].color }}>{CATEGORY[id]}</span>
         <p className="s05-role">{m.role}</p>
         <div className="s05-diagram">
           <ModelDiagram model={id} />

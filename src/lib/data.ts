@@ -54,14 +54,14 @@ export const MODEL_ORDER: ModelId[] = ["logreg", "xgboost", "mlp", "deep_mlp", "
 export const BUDGET_ORDER: BudgetId[] = ["250k", "1m", "2.5m"];
 export const BUDGET_LABEL: Record<BudgetId, string> = { "250k": "250k", "1m": "1M", "2.5m": "2.5M" };
 
-// Categorical colours, fixed per model in every chart. Checked with the
-// dataviz palette validator against the dark surface (CVD and contrast pass).
+// Categorical colours in the Quantum Noir palette, fixed per model in every
+// chart for consistent cross-scene reading and clear luminance/hue separation.
 export const MODEL: Record<ModelId, { label: string; short: string; color: string }> = {
-  logreg: { label: "Logistic Regression", short: "LogReg", color: "#7890D8" },
-  xgboost: { label: "XGBoost", short: "XGBoost", color: "#BF8A2C" },
-  mlp: { label: "Compact MLP", short: "Compact MLP", color: "#D45F9B" },
-  deep_mlp: { label: "Deep MLP", short: "Deep MLP", color: "#8F74E8" },
-  resnet_mlp: { label: "Residual MLP", short: "Residual MLP", color: "#28A6B9" },
+  logreg: { label: "Logistic Regression", short: "LogReg", color: "#8E8E99" },
+  xgboost: { label: "XGBoost", short: "XGBoost", color: "#F0B95A" },
+  mlp: { label: "Compact MLP", short: "Compact MLP", color: "#F4F1EB" },
+  deep_mlp: { label: "Deep MLP", short: "Deep MLP", color: "#A78BFA" },
+  resnet_mlp: { label: "Residual MLP", short: "Residual MLP", color: "#D946EF" },
 };
 
 export function getRun(budget: BudgetId, model: ModelId, group: GroupId): Run {

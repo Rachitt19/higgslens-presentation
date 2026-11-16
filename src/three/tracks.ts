@@ -1,6 +1,6 @@
-// Deterministic generator for the decorative collision field. These tracks
-// are an illustration in the style of a collider event display; they are not
-// drawn from the HIGGS dataset.
+// Deterministic generator for the conceptual collision field. These tracks
+// are an artistic visualisation in the style of a collider event display;
+// they are not actual measured Higgs events or drawn from the HIGGS dataset.
 
 export interface Track {
   points: [number, number, number][]; // x = beam axis, (y, z) = transverse plane
@@ -19,29 +19,30 @@ function mulberry32(seed: number) {
   };
 }
 
-const PALETTE: [number, number, number][] = [
-  [0.31, 0.85, 0.92], // cyan
-  [0.31, 0.85, 0.92],
-  [0.3, 0.49, 1.0], // blue
-  [0.3, 0.49, 1.0],
-  [0.61, 0.48, 1.0], // violet
-  [0.95, 0.7, 0.29], // amber
-];
+// Quantum Noir palette: Stellar White, Muted Silver, Quantum Violet, Particle Magenta, Energy Gold
+const VIOLET: [number, number, number] = [0.655, 0.545, 0.98];   // #A78BFA
+const MAGENTA: [number, number, number] = [0.851, 0.275, 0.937]; // #D946EF
+const GOLD: [number, number, number] = [0.941, 0.725, 0.353];    // #F0B95A
+const WHITE: [number, number, number] = [0.957, 0.945, 0.922];   // #F4F1EB
+const SILVER: [number, number, number] = [0.631, 0.631, 0.667];  // #A1A1AA
 
-export const STEPS = 72;
+const SOFT_PALETTE: [number, number, number][] = [VIOLET, VIOLET, SILVER, SILVER, MAGENTA];
+const STIFF_PALETTE: [number, number, number][] = [GOLD, GOLD, WHITE, MAGENTA, VIOLET];
 
-export function generateTracks(count = 170, seed = 42): Track[] {
+export const STEPS = 96;
+
+export function generateTracks(count = 165, seed = 42): Track[] {
   const rnd = mulberry32(seed);
   const tracks: Track[] = [];
   for (let i = 0; i < count; i++) {
-    const eta = (rnd() - 0.5) * 4.2;
+    const eta = (rnd() - 0.5) * 4.0;
     let phi = rnd() * Math.PI * 2;
-    const pt = 0.15 + Math.pow(rnd(), 2.2) * 3.2; // most tracks soft, a few stiff
+    const pt = 0.16 + Math.pow(rnd(), 2.25) * 3.4; // most tracks soft, a few stiff
     const charge = rnd() < 0.5 ? -1 : 1;
-    const radius = 0.5 + pt * 3.4; // curvature radius in the solenoid field
-    const length = 2.4 + rnd() * 4.6;
+    const radius = 0.52 + pt * 3.6; // curvature radius in a conceptual solenoidal field
+    const length = 2.6 + rnd() * 4.8;
     const ds = length / STEPS;
-    const dx = Math.sinh(eta) * 0.42;
+    const dx = Math.sinh(eta) * 0.4;
     let x = 0;
     let y = 0;
     let z = 0;
@@ -53,9 +54,11 @@ export function generateTracks(count = 170, seed = 42): Track[] {
       x += dx * ds;
       points.push([x, y, z]);
     }
-    const stiff = pt > 1.6;
-    const color = stiff && rnd() < 0.5 ? PALETTE[5] : PALETTE[Math.floor(rnd() * 5)];
-    tracks.push({ points, color, delay: rnd() * 0.35 });
+    const stiff = pt > 1.55;
+    const color = stiff
+      ? STIFF_PALETTE[Math.floor(rnd() * STIFF_PALETTE.length)]
+      : SOFT_PALETTE[Math.floor(rnd() * SOFT_PALETTE.length)];
+    tracks.push({ points, color, delay: rnd() * 0.34 });
   }
   return tracks;
 }

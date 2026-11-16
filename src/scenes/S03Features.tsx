@@ -14,7 +14,10 @@ export default function S03Features({ step, setStep }: SceneProps) {
   return (
     <div className="s03">
       <header className="s03-head">
-        <h2 className="headline">From a collision to 28 numbers.</h2>
+        <div>
+          <span className="tag">Feature representation</span>
+          <h2 className="headline">From a collision to 28 numbers.</h2>
+        </div>
         <dl className="s03-facts">
           <div><dt>source events</dt><dd className="num">{int(data.run.sourceRows)}</dd></div>
           <div><dt>binary label</dt><dd className="num">1</dd></div>

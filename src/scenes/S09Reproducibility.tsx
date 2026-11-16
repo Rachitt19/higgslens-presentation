@@ -4,10 +4,11 @@ import { REPRO } from "../content";
 export default function S09Reproducibility(_: SceneProps) {
   return (
     <div className="s09">
+      <span className="tag">Scientific integrity</span>
       <h2 className="headline">{REPRO.headline}</h2>
       <div className="s09-cols">
         <section>
-          <h3>Fixed by the protocol</h3>
+          <h3 className="s09-h-fixed">Fixed by the protocol</h3>
           <dl className="s09-spec">
             {REPRO.fixed.map((f) => (
               <div key={f.k}>
@@ -20,7 +21,7 @@ export default function S09Reproducibility(_: SceneProps) {
           <p className="body s09-leak">{REPRO.leakage}</p>
         </section>
         <section>
-          <h3>Limits of the benchmark</h3>
+          <h3 className="s09-h-limits">Limits of the benchmark</h3>
           <ul className="s09-limits">
             {REPRO.limits.map((l) => (
               <li key={l}>{l}</li>

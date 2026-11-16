@@ -60,26 +60,49 @@ export interface EventObjects {
  * Schematic transverse view of one event: a lepton, missing energy and four
  * jets. It illustrates the final state; the angles are not event data.
  */
-export function EventDisplay({ objects, size = 320, showLabels = true }: { objects: EventObjects; size?: number; showLabels?: boolean }) {
+export function EventDisplay({
+  objects,
+  size = 320,
+  showLabels = true,
+  variant = "neutral",
+}: {
+  objects: EventObjects;
+  size?: number;
+  showLabels?: boolean;
+  variant?: "signal" | "background" | "neutral";
+}) {
   const pt = (deg: number, r: number): [number, number] => {
     const a = (deg * Math.PI) / 180;
     return [Math.cos(a) * r, -Math.sin(a) * r];
   };
   const wedge = (phi: number, len: number) => {
-    const [x1, y1] = pt(phi - 7, len);
-    const [x2, y2] = pt(phi + 7, len);
+    const [x1, y1] = pt(phi - 7.5, len);
+    const [x2, y2] = pt(phi + 7.5, len);
     return `M0,0 L${x1.toFixed(1)},${y1.toFixed(1)} A${len},${len} 0 0 0 ${x2.toFixed(1)},${y2.toFixed(1)} Z`;
   };
-  const label = (deg: number, r: number, text: ReactNode) => {
+  const label = (deg: number, r: number, text: ReactNode, cls = "ev-label") => {
     const [x, y] = pt(deg, r);
     return (
-      <text x={x} y={y} className="ev-label" textAnchor="middle" dominantBaseline="middle">
+      <text x={x} y={y} className={cls} textAnchor="middle" dominantBaseline="middle">
         {text}
       </text>
     );
   };
+  const [lx, ly] = pt(objects.lepton, 96);
+  const [mx, my] = pt(objects.met, 78);
+
   return (
-    <svg className="event-display" width={size} height={size} viewBox="-130 -130 260 260" role="img" aria-label="Schematic event: one lepton, missing energy and four jets, two b-tagged">
+    <svg
+      className={`event-display event-display--${variant}`}
+      width={size}
+      height={size}
+      viewBox="-132 -132 264 264"
+      role="img"
+      aria-label="Schematic event: one lepton, missing energy and four jets, two b-tagged"
+    >
+      <circle r={116} className="ev-chamber" />
+      <line x1={-108} y1={0} x2={108} y2={0} className="ev-axis" />
+      <line x1={0} y1={-108} x2={0} y2={108} className="ev-axis" />
       {[36, 70, 104].map((r) => (
         <circle key={r} r={r} className="ev-ring" />
       ))}
@@ -91,14 +114,15 @@ export function EventDisplay({ objects, size = 320, showLabels = true }: { objec
       {objects.jets.map((j, i) => (
         <g key={i}>
           <path d={wedge(j.phi, j.len)} className={j.b ? "ev-jet ev-jet-b" : "ev-jet"} />
-          {showLabels && label(j.phi, j.len + 13, j.b ? "b" : "j")}
+          {showLabels && label(j.phi, j.len + 13, j.b ? "b" : "j", j.b ? "ev-label ev-label-b" : "ev-label")}
         </g>
       ))}
-      <line x1={0} y1={0} x2={pt(objects.lepton, 96)[0]} y2={pt(objects.lepton, 96)[1]} className="ev-lepton" />
-      {showLabels && label(objects.lepton, 110, "ℓ")}
-      <line x1={0} y1={0} x2={pt(objects.met, 78)[0]} y2={pt(objects.met, 78)[1]} className="ev-met" />
+      <line x1={0} y1={0} x2={lx} y2={ly} className="ev-lepton" />
+      <circle cx={lx} cy={ly} r={2.4} className="ev-lepton-tip" />
+      {showLabels && label(objects.lepton, 112, "ℓ", "ev-label ev-label-lepton")}
+      <line x1={0} y1={0} x2={mx} y2={my} className="ev-met" />
       {showLabels && label(objects.met, 94, "miss")}
-      <circle r={2.5} className="ev-vertex" />
+      <circle r={3.2} className="ev-vertex" />
     </svg>
   );
 }

@@ -1,5 +1,5 @@
 import type { ModelId } from "../lib/data";
-import { MODEL, cfg, data } from "../lib/data";
+import { cfg, data } from "../lib/data";
 
 const W = 760;
 const H = 440;
@@ -10,42 +10,116 @@ interface Column {
   sub?: string;
 }
 
-/** Fully connected layers, abbreviated to a readable number of nodes. */
-function LayerNet({ columns, color }: { columns: Column[]; color: string }) {
+/** Fully connected layers rendered in Stellar White, Quantum Violet and Particle Magenta. */
+function LayerNet({ columns, variant }: { columns: Column[]; variant: "linear" | "shallow" | "deep" }) {
   const x = (i: number) => 70 + (i * (W - 140)) / (columns.length - 1);
   const top = 46;
   const usable = H - 130;
-  const ys = (n: number) => Array.from({ length: n }, (_, k) => top + usable / 2 + (k - (n - 1) / 2) * Math.min(30, usable / Math.max(1, n - 1)));
+  const ys = (n: number) =>
+    Array.from({ length: n }, (_, k) => top + usable / 2 + (k - (n - 1) / 2) * Math.min(30, usable / Math.max(1, n - 1)));
+
+  const nodeColor = (colIdx: number) => {
+    if (variant === "linear") return colIdx === 0 ? "#F4F1EB" : "#A1A1AA";
+    if (colIdx === 0) return "#F4F1EB";
+    if (colIdx === columns.length - 1) return "#D946EF";
+    if (variant === "deep") return colIdx % 2 === 1 ? "#A78BFA" : "#D946EF";
+    return "#A78BFA";
+  };
+
+  const edgeColor = (colIdx: number) => {
+    if (variant === "linear") return "#A1A1AA";
+    if (colIdx >= columns.length - 2) return "#D946EF";
+    return colIdx % 2 === 0 ? "#F4F1EB" : "#A78BFA";
+  };
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="net" role="img">
       {columns.slice(0, -1).map((c, i) =>
         ys(c.drawn).flatMap((y1, a) =>
-          ys(columns[i + 1].drawn).map((y2, b) => <line key={`${i}-${a}-${b}`} x1={x(i)} y1={y1} x2={x(i + 1)} y2={y2} stroke={color} className="net-edge" style={{ animationDelay: `${i * 0.28}s` }} />),
+          ys(columns[i + 1].drawn).map((y2, b) => (
+            <line
+              key={`${i}-${a}-${b}`}
+              x1={x(i)}
+              y1={y1}
+              x2={x(i + 1)}
+              y2={y2}
+              stroke={edgeColor(i)}
+              className="net-edge"
+              style={{ animationDelay: `${i * 0.25}s` }}
+            />
+          )),
         ),
       )}
-      {columns.map((c, i) => (
-        <g key={i} className="net-col" style={{ animationDelay: `${i * 0.28}s` }}>
-          {ys(c.drawn).map((y, k) => (
-            <circle key={k} cx={x(i)} cy={y} r={c.drawn === 1 ? 9 : 5.5} fill={i === 0 ? "none" : color} stroke={i === 0 ? "var(--ink-2)" : color} strokeWidth={1.5} />
-          ))}
-          <text x={x(i)} y={H - 44} textAnchor="middle" className="net-label">{c.label}</text>
-          {c.sub && <text x={x(i)} y={H - 22} textAnchor="middle" className="net-sub">{c.sub}</text>}
-        </g>
-      ))}
+      {columns.map((c, i) => {
+        const fill = nodeColor(i);
+        const isInput = i === 0;
+        const isOut = i === columns.length - 1;
+        return (
+          <g key={i} className="net-col" style={{ animationDelay: `${i * 0.25}s` }}>
+            {ys(c.drawn).map((y, k) => (
+              <g key={k}>
+                {isOut && variant !== "linear" && (
+                  <circle cx={x(i)} cy={y} r={15} fill="none" stroke="#F4F1EB" strokeOpacity={0.35} strokeWidth={1} />
+                )}
+                <circle
+                  cx={x(i)}
+                  cy={y}
+                  r={isOut ? 9 : 5.5}
+                  fill={isInput ? "var(--bg)" : fill}
+                  stroke={isOut ? "#F4F1EB" : fill}
+                  strokeWidth={isInput || isOut ? 1.8 : 1.4}
+                />
+              </g>
+            ))}
+            <text x={x(i)} y={H - 44} textAnchor="middle" className="net-label">{c.label}</text>
+            {c.sub && <text x={x(i)} y={H - 22} textAnchor="middle" className="net-sub">{c.sub}</text>}
+          </g>
+        );
+      })}
     </svg>
   );
 }
 
-function Trees({ color }: { color: string }) {
+/** Boosted tree ensemble in Energy Gold and Stellar White. */
+function Trees() {
+  const gold = "#F0B95A";
   const tree = (cx: number, key: number, lean: number) => {
     const levels = [[0], [-32, 32], [-50, -17, 17, 50]];
     const y = (l: number) => 70 + l * 100;
     return (
       <g key={key} className="net-col" style={{ animationDelay: `${key * 0.22}s` }}>
         {levels.slice(0, -1).flatMap((lv, l) =>
-          lv.flatMap((dx, k) => [0, 1].map((c) => <line key={`${l}-${k}-${c}`} x1={cx + dx} y1={y(l)} x2={cx + levels[l + 1][k * 2 + c]} y2={y(l + 1)} stroke={color} strokeOpacity={0.5} strokeWidth={1.2} />)),
+          lv.flatMap((dx, k) =>
+            [0, 1].map((c) => (
+              <line
+                key={`${l}-${k}-${c}`}
+                x1={cx + dx}
+                y1={y(l)}
+                x2={cx + levels[l + 1][k * 2 + c]}
+                y2={y(l + 1)}
+                stroke={gold}
+                strokeOpacity={0.45}
+                strokeWidth={1.25}
+              />
+            )),
+          ),
         )}
-        {levels.flatMap((lv, l) => lv.map((dx, k) => <circle key={`${l}-${k}`} cx={cx + dx} cy={y(l)} r={l === 2 ? 5 : 6} fill={l === 2 && (k + lean) % 3 === 0 ? color : "var(--bg)"} stroke={color} strokeWidth={1.5} />))}
+        {levels.flatMap((lv, l) =>
+          lv.map((dx, k) => {
+            const active = l === 2 && (k + lean) % 3 === 0;
+            return (
+              <circle
+                key={`${l}-${k}`}
+                cx={cx + dx}
+                cy={y(l)}
+                r={l === 2 ? 5 : 6}
+                fill={active ? gold : "var(--bg)"}
+                stroke={active ? "#F4F1EB" : gold}
+                strokeWidth={1.5}
+              />
+            );
+          }),
+        )}
       </g>
     );
   };
@@ -58,7 +132,8 @@ function Trees({ color }: { color: string }) {
       ))}
       <text x={590} y={182} textAnchor="middle" className="net-op">+ …</text>
       <g className="net-col" style={{ animationDelay: "1s" }}>
-        <circle cx={690} cy={172} r={9} fill={color} />
+        <circle cx={690} cy={172} r={14} fill="none" stroke={gold} strokeOpacity={0.35} strokeWidth={1} />
+        <circle cx={690} cy={172} r={9} fill={gold} stroke="#F4F1EB" strokeWidth={1.5} />
         <text x={690} y={H - 44} textAnchor="middle" className="net-label">score</text>
       </g>
       <text x={297} y={H - 44} textAnchor="middle" className="net-label">
@@ -69,49 +144,114 @@ function Trees({ color }: { color: string }) {
   );
 }
 
-function Residual({ color }: { color: string }) {
+/** Residual MLP in Stellar White, Quantum Violet and luminous Particle Magenta skip connections. */
+function Residual() {
   const blocks = cfg<number[]>("resnet_mlp", "hidden_sizes");
   const width = blocks[0];
   const bx = (i: number) => 178 + i * 118;
-  const mid = 200;
+  const mid = 205;
+  const white = "#F4F1EB";
+  const violet = "#A78BFA";
+  const magenta = "#D946EF";
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="net" role="img">
-      <line x1={50} y1={mid} x2={710} y2={mid} stroke={color} strokeOpacity={0.45} strokeWidth={1.5} />
+      <defs>
+        <filter id="skip-glow" x="-20%" y="-40%" width="140%" height="180%">
+          <feGaussianBlur stdDeviation="3.2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Main forward signal spine */}
+      <line x1={50} y1={mid} x2={710} y2={mid} stroke={white} strokeOpacity={0.35} strokeWidth={1.6} />
+
+      {/* Input projection */}
       <g className="net-col">
-        {[-60, -36, -12, 12, 36, 60].map((dy) => <circle key={dy} cx={50} cy={mid + dy} r={5} fill="none" stroke="var(--ink-2)" strokeWidth={1.5} />)}
-        <rect x={98} y={mid - 64} width={16} height={128} rx={3} fill={color} />
+        {[-60, -36, -12, 12, 36, 60].map((dy) => (
+          <circle key={dy} cx={50} cy={mid + dy} r={5} fill="var(--bg)" stroke={white} strokeWidth={1.6} />
+        ))}
+        <rect x={98} y={mid - 64} width={16} height={128} rx={3} fill={violet} stroke={white} strokeOpacity={0.5} strokeWidth={1} />
         <text x={50} y={H - 44} textAnchor="middle" className="net-label">28 in</text>
         <text x={106} y={mid - 78} textAnchor="middle" className="net-sub">Linear {width}</text>
       </g>
-      {blocks.map((_, i) => (
-        <g key={i} className="net-col" style={{ animationDelay: `${0.3 + i * 0.3}s` }}>
-          <path d={`M${bx(i) - 22},${mid} C${bx(i) - 22},${mid - 150} ${bx(i) + 78},${mid - 150} ${bx(i) + 78},${mid - 12}`} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray="4 5" />
-          <rect x={bx(i)} y={mid - 86} width={56} height={172} rx={6} fill="var(--bg)" stroke={color} strokeOpacity={0.6} />
-          <rect x={bx(i) + 12} y={mid - 70} width={12} height={140} rx={2} fill={color} />
-          <rect x={bx(i) + 32} y={mid - 35} width={12} height={70} rx={2} fill={color} fillOpacity={0.7} />
-          <circle cx={bx(i) + 78} cy={mid} r={11} fill="var(--bg)" stroke={color} strokeWidth={1.5} />
-          <text x={bx(i) + 78} y={mid + 5.5} textAnchor="middle" className="net-plus">+</text>
-          <text x={bx(i) + 28} y={mid + 108} textAnchor="middle" className="net-sub">block {i + 1}</text>
-        </g>
-      ))}
-      <g className="net-col" style={{ animationDelay: "1.6s" }}>
-        <circle cx={710} cy={mid} r={9} fill={color} />
+
+      {/* Residual blocks with prominent Particle Magenta skip arcs */}
+      {blocks.map((_, i) => {
+        const x0 = bx(i);
+        const skipStart = x0 - 22;
+        const skipEnd = x0 + 78;
+        const arcPeakY = mid - 122;
+        const apexX = (skipStart + skipEnd) / 2;
+        return (
+          <g key={i} className="net-col" style={{ animationDelay: `${0.25 + i * 0.28}s` }}>
+            {/* Prominent luminous residual skip arc */}
+            <path
+              d={`M${skipStart},${mid} C${skipStart},${mid - 162} ${skipEnd},${mid - 162} ${skipEnd},${mid - 14}`}
+              fill="none"
+              stroke={magenta}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              filter="url(#skip-glow)"
+            />
+            {/* Directional chevron at skip apex */}
+            <path
+              d={`M${apexX - 4},${arcPeakY - 4} L${apexX + 5},${arcPeakY} L${apexX - 4},${arcPeakY + 4}`}
+              fill="none"
+              stroke={white}
+              strokeWidth={1.6}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx={skipStart} cy={mid} r={3.2} fill={magenta} />
+
+            {/* Residual block container */}
+            <rect x={x0} y={mid - 84} width={56} height={168} rx={6} fill="#050609" stroke={violet} strokeOpacity={0.65} strokeWidth={1.2} />
+            <rect x={x0 + 12} y={mid - 68} width={12} height={136} rx={2} fill={violet} />
+            <rect x={x0 + 32} y={mid - 34} width={12} height={68} rx={2} fill={white} fillOpacity={0.88} />
+
+            {/* Summation junction */}
+            <circle cx={skipEnd} cy={mid} r={12.5} fill="#050609" stroke={magenta} strokeWidth={2} />
+            <text x={skipEnd} y={mid + 5.5} textAnchor="middle" className="net-plus">+</text>
+            <text x={x0 + 28} y={mid + 106} textAnchor="middle" className="net-sub">block {i + 1}</text>
+          </g>
+        );
+      })}
+
+      {/* Output score */}
+      <g className="net-col" style={{ animationDelay: "1.5s" }}>
+        <circle cx={710} cy={mid} r={15} fill="none" stroke={magenta} strokeOpacity={0.45} strokeWidth={1.2} />
+        <circle cx={710} cy={mid} r={9} fill={magenta} stroke={white} strokeWidth={1.6} />
         <text x={710} y={H - 44} textAnchor="middle" className="net-label">score</text>
       </g>
-      <text x={380} y={H - 44} textAnchor="middle" className="net-label">inside a block: Linear {width * 2}, then Linear {width}</text>
-      <text x={380} y={H - 22} textAnchor="middle" className="net-sub">dashed line: the skip connection that adds the block's input to its output</text>
+
+      <text x={380} y={H - 44} textAnchor="middle" className="net-label">
+        block: Linear {width * 2} (violet) → Linear {width} (white)
+      </text>
+      <text x={380} y={H - 22} textAnchor="middle" className="net-sub net-sub-magenta">
+        magenta skip arcs add each block’s input directly to its output
+      </text>
     </svg>
   );
 }
 
 export function ModelDiagram({ model }: { model: ModelId }) {
-  const color = MODEL[model].color;
   const inputs: Column = { drawn: 10, label: `${data.features.length} in` };
   const out: Column = { drawn: 1, label: "score" };
-  if (model === "xgboost") return <Trees color={color} />;
-  if (model === "resnet_mlp") return <Residual color={color} />;
-  if (model === "logreg") return <LayerNet color={color} columns={[inputs, { drawn: 1, label: "score", sub: "sigmoid of one weighted sum" }]} />;
+  if (model === "xgboost") return <Trees />;
+  if (model === "resnet_mlp") return <Residual />;
+  if (model === "logreg") {
+    return <LayerNet variant="linear" columns={[inputs, { drawn: 1, label: "score", sub: "sigmoid of one weighted sum" }]} />;
+  }
   const hidden = cfg<number[]>(model, "hidden_sizes");
   const drawn = (w: number) => (w >= 300 ? 12 : w >= 64 ? 9 : 6);
-  return <LayerNet color={color} columns={[inputs, ...hidden.map((w) => ({ drawn: drawn(w), label: String(w) })), out]} />;
+  return (
+    <LayerNet
+      variant={model === "deep_mlp" ? "deep" : "shallow"}
+      columns={[inputs, ...hidden.map((w) => ({ drawn: drawn(w), label: String(w) })), out]}
+    />
+  );
 }

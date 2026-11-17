@@ -10,15 +10,15 @@ export const TEAM = ["Saumya Mishra", "Aditya Rana", "Rachit Gupta", "Ronit Sing
 
 export const SCENE_TITLES = [
   "The collision",
-  "The problem",
-  "From events to features",
+  "The hidden signal",
+  "From event to features",
   "The experimental pipeline",
   "The models",
   "The results",
   "Scaling with data",
   "HiggsLens workbench",
   "Reproducibility and limitations",
-  "Conclusion",
+  "The final collision",
 ];
 
 export const BOUNDARY = "Simulated Monte Carlo events from the UCI HIGGS benchmark. Not a particle-discovery analysis.";
@@ -27,53 +27,54 @@ export const PROBLEM = {
   headline: "Two processes leave the same particles in the detector.",
   signal: {
     name: "Signal",
-    body: "A hypothetical heavy Higgs boson decaying through W bosons and a charged Higgs to a light Higgs, which decays to a pair of b quarks.",
+    sub: "Hypothetical heavy Higgs cascade → b b̄",
+    body: "Decays through W and charged Higgs bosons to a light Higgs pair-of-b-quarks final state.",
   },
   background: {
     name: "Background",
-    body: "Standard Model top-quark pair production, which ends in the same visible final state.",
+    sub: "Standard Model top-quark pair production",
+    body: "Produces the identical visible inventory of particles through a distinct kinematic decay.",
   },
-  finalState: "One charged lepton, missing transverse energy and four jets, two of them b-tagged.",
-  why: "Counting particles cannot separate them. The difference is in how the momenta are correlated.",
-  question:
-    "Can a model learn that separation from raw kinematics, do the physicists' invariant masses add measurable value, and what does the model family change in discrimination, calibration and compute?",
+  finalState: "1 charged lepton · missing transverse energy · 4 jets (2 b-tagged)",
+  why: "Appearance alone cannot separate them—discrimination lives in correlated momenta.",
+  question: "Can machine learning distinguish simulated signal from background from raw kinematics and invariant masses?",
 };
 
 export const FEATURE_STAGES = [
   {
-    title: "Collision event",
-    body: `One simulated event. The UCI archive holds ${int(R.sourceRows)} of them, each with a binary label.`,
+    title: "Freeze the event",
+    body: `${int(R.sourceRows)} simulated UCI events · 1 binary label each.`,
   },
   {
-    title: "Reconstructed measurements",
-    body: "What the detector simulation reports for each object: momentum, direction and, for jets, a b-tag.",
+    title: "Lock measurements",
+    body: "Momentum, direction and b-tag extracted from 6 detector objects.",
   },
   {
-    title: "Feature representation",
-    body: "21 low-level kinematic features, plus 7 high-level invariant masses that physicists compute from them.",
+    title: "28-feature vector",
+    body: "21 low-level kinematics + 7 physicist-computed invariant masses.",
   },
   {
-    title: "Machine-learning input",
-    body: "Each model is trained three times: on the low-level group, the high-level group, and all 28.",
+    title: "Three input slices",
+    body: "Every model trained on low_level (21), high_level (7), and all (28).",
   },
 ];
 
 export const MEASUREMENTS = [
   { object: "Lepton", fields: ["pT", "η", "φ"], count: 3 },
-  { object: "Missing energy", fields: ["magnitude", "φ"], count: 2 },
+  { object: "Missing E_T", fields: ["magnitude", "φ"], count: 2 },
   { object: "Jets 1 to 4", fields: ["pT", "η", "φ", "b-tag"], count: 16 },
 ];
 
 export const PIPELINE = [
-  { title: "Acquire", body: `Full UCI HIGGS archive, ${int(R.sourceRows)} rows.` },
-  { title: "Validate", body: "29 columns, labels in {0, 1}, every value finite." },
-  { title: "Deduplicate", body: `${int(R.duplicateRowsRemoved)} duplicate events removed, then nested seeded samples drawn.` },
-  { title: "Split", body: `Stratified 70 / 15 / 15 with seed ${R.seed}, shared by every model.` },
-  { title: "Preprocess", body: "StandardScaler fitted on training rows only." },
-  { title: "Train", body: "Five models on three feature groups; early stopping on validation." },
-  { title: "Set threshold", body: "Chosen on validation for 50% signal efficiency (recorded for the classical runs)." },
-  { title: "Test", body: "Held-out test set scored once, with the threshold frozen." },
-  { title: "Export", body: "metrics.json and test_predictions.csv per run, read by the dashboard." },
+  { title: "Acquire", metric: "11.0M rows", body: "Full UCI HIGGS archive." },
+  { title: "Validate", metric: "29 columns", body: "Binary labels, finite values." },
+  { title: "Deduplicate", metric: `−${int(R.duplicateRowsRemoved)}`, body: "Duplicates purged before split." },
+  { title: "Split", metric: `70 / 15 / 15`, body: `Stratified, seed ${R.seed}.` },
+  { title: "Preprocess", metric: "Train-only", body: "z = (x − μ_train) / σ_train." },
+  { title: "Train", metric: "Batch 1,024", body: "AdamW · ReLU · BN · Cosine LR." },
+  { title: "Stop & Cutoff", metric: "Patience 5/8", body: "Early stop & 50% ε_S on val." },
+  { title: "Test", metric: "1× frozen", body: "Held-out split scored once." },
+  { title: "Export", metric: "v1 schema", body: "metrics.json & predictions CSV." },
 ];
 
 const params = (m: ModelId) => {
@@ -84,43 +85,43 @@ const params = (m: ModelId) => {
 export const MODELS: Record<ModelId, { role: string; why: string; specs: string[] }> = {
   logreg: {
     role: "Linear reference",
-    why: "One weighted sum of the inputs. It shows how much separation exists without any interaction between features.",
-    specs: [`L-BFGS solver, C = ${cfg<number>("logreg", "C").toFixed(1)}`, "StandardScaler fitted on training rows", `Up to ${int(cfg<number>("logreg", "max_iter"))} iterations`],
+    why: "One weighted sum of the 28 inputs—measures linear separability without feature interactions.",
+    specs: [`L-BFGS · C = ${cfg<number>("logreg", "C").toFixed(1)}`, "Train-only StandardScaler", `≤ ${int(cfg<number>("logreg", "max_iter"))} iterations`],
   },
   xgboost: {
     role: "Tuned tree ensemble",
-    why: "Boosted trees capture nonlinear interactions and are the strong classical opponent, tuned on validation so the comparison is fair.",
+    why: "Boosted trees capture nonlinear interactions and provide the fast classical baseline.",
     specs: [
-      `Up to ${int(cfg<number>("xgboost", "n_estimators"))} trees of depth ${cfg<number>("xgboost", "max_depth")}`,
-      `Learning rate ${cfg<number>("xgboost", "learning_rate")}, row and column subsample ${cfg<number>("xgboost", "subsample")}`,
-      `Early stopping after ${cfg<number>("xgboost", "early_stopping_rounds")} rounds on validation`,
+      `≤ ${int(cfg<number>("xgboost", "n_estimators"))} trees · depth ${cfg<number>("xgboost", "max_depth")}`,
+      `lr ${cfg<number>("xgboost", "learning_rate")} · subsample ${cfg<number>("xgboost", "subsample")}`,
+      `Validation stopping (${cfg<number>("xgboost", "early_stopping_rounds")} rounds)`,
     ],
   },
   mlp: {
-    role: "Shallow network, the mid-semester baseline",
-    why: "Two small hidden layers. A shallow control: it shows what a network without depth can do with the same data.",
+    role: "Compact shallow baseline",
+    why: "Two narrow hidden layers—shows what a shallow network achieves on identical inputs.",
     specs: [
-      `Hidden layers ${cfg<number[]>("mlp", "hidden_sizes").join(" → ")}`,
-      `BatchNorm, ReLU, dropout ${cfg<number>("mlp", "dropout").toFixed(2)}, AdamW`,
-      `${params("mlp")}, up to ${cfg<number>("mlp", "max_epochs")} epochs`,
+      `Hidden ${cfg<number[]>("mlp", "hidden_sizes").join(" → ")}`,
+      `BatchNorm · ReLU · dropout ${cfg<number>("mlp", "dropout").toFixed(2)}`,
+      `${params("mlp")} · ≤ ${cfg<number>("mlp", "max_epochs")} epochs`,
     ],
   },
   deep_mlp: {
-    role: "Depth and width of Baldi et al. (2014)",
-    why: "Five wide layers can build the nonlinear combinations of momenta that the invariant masses encode by hand.",
+    role: "Deep MLP (Baldi et al. 2014)",
+    why: "Five wide layers learn oblique momentum combinations sequentially across depth.",
     specs: [
-      `${cfg<number[]>("deep_mlp", "hidden_sizes").length} hidden layers of ${cfg<number[]>("deep_mlp", "hidden_sizes")[0]} units`,
-      `BatchNorm, ReLU, dropout ${cfg<number>("deep_mlp", "dropout").toFixed(2)}, cosine schedule`,
-      `${params("deep_mlp")}, up to ${cfg<number>("deep_mlp", "max_epochs")} epochs, patience ${cfg<number>("deep_mlp", "early_stopping_patience")}`,
+      `${cfg<number[]>("deep_mlp", "hidden_sizes").length} × ${cfg<number[]>("deep_mlp", "hidden_sizes")[0]} units`,
+      `BatchNorm · ReLU · dropout ${cfg<number>("deep_mlp", "dropout").toFixed(2)} · cosine`,
+      `${params("deep_mlp")} · patience ${cfg<number>("deep_mlp", "early_stopping_patience")}`,
     ],
   },
   resnet_mlp: {
-    role: "Residual blocks after Gorishniy et al. (2021)",
-    why: "Skip connections let each block refine the representation instead of rebuilding it, which keeps a deep stack trainable.",
+    role: "Residual MLP (Gorishniy et al. 2021)",
+    why: "Skip connections carry input x around each block so weights learn only refinement F(x).",
     specs: [
-      `${cfg<number[]>("resnet_mlp", "hidden_sizes").length} residual blocks of width ${cfg<number[]>("resnet_mlp", "hidden_sizes")[0]}`,
-      "Block: BatchNorm → Linear 512 → ReLU → Linear 256, plus skip",
-      `${params("resnet_mlp")}, same optimiser and stopping rule as the deep MLP`,
+      `${cfg<number[]>("resnet_mlp", "hidden_sizes").length} residual blocks · width ${cfg<number[]>("resnet_mlp", "hidden_sizes")[0]}`,
+      "Block: BN → Linear 512 → ReLU → Linear 256 + skip",
+      `${params("resnet_mlp")} · patience ${cfg<number>("resnet_mlp", "early_stopping_patience")}`,
     ],
   },
 };
@@ -134,7 +135,7 @@ export const RESULTS = {
     { label: "PR-AUC", value: best250.prAuc, note: "Average precision across all thresholds; summarises purity vs. capture." },
     { label: "Brier score", value: best250.brier, note: "Mean squared error of predicted probabilities against 0/1 labels (lower is better)." },
   ],
-  views: ["Leaderboard", "ROC curves", "Feature groups"],
+  views: ["Leaderboard", "ROC curves", "Feature groups", "Calibration"],
 };
 
 export const SCALING = {
@@ -144,31 +145,31 @@ export const SCALING = {
 
 export const WORKBENCH = {
   headline: "Every result can be opened.",
-  body: "A Streamlit dashboard reading the saved 250k run packages directly from disk—never training a model at startup.",
+  body: "Artifact-backed Streamlit workbench reading saved outputs—zero startup training.",
   views: [
     {
       file: "dataset.png",
       name: "Dataset observatory",
       tag: "Step 01 · Inputs & EDA",
-      body: "Inspects the 21 low-level kinematic inputs and 7 high-level invariant masses alongside distribution, correlation and class-balance tabs.",
+      body: "21 kinematic inputs + 7 invariant masses with distributions, correlations and class balance.",
     },
     {
       file: "overview.png",
       name: "Experiment registry",
       tag: "Step 02 · Saved Runs",
-      body: "Discovers all 15 saved runs, verifies the higgs-split-v1 · seed 42 contract with 0 missing values, and surfaces the top observed run (0.8339).",
+      body: "Validates 15 saved runs (higgs-split-v1 · seed 42), 0 missing values, top run 0.8339.",
     },
     {
       file: "experiments.png",
       name: "Model comparison",
       tag: "Step 03 · Cross-Run View",
-      body: "Filters across runs, 5 model families and 3 feature groups to compare the leaderboard, feature-group gains and compute efficiency.",
+      body: "Filters runs, 5 model families and 3 feature groups across leaderboard and efficiency.",
     },
     {
       file: "validation.png",
       name: "Validation workbench",
       tag: "Step 04 · Curves & Thresholds",
-      body: "Overlays ROC, precision-recall and reliability calibration curves, MLP training history and interactive cutoff exploration on saved predictions.",
+      body: "ROC, PR and calibration curves, training curves and exploratory cutoff workbench.",
     },
   ],
 };
@@ -176,29 +177,29 @@ export const WORKBENCH = {
 export const REPRO = {
   headline: "What is fixed, and what this does not show.",
   fixed: [
-    { k: "Seed", v: String(R.seed), note: "one seed for sampling, splitting and training" },
-    { k: "Split", v: "70 / 15 / 15", note: "stratified on the label; same indices for every model" },
-    { k: "Split protocol", v: data.configs.resnet_mlp.splitProtocol, note: "recorded in every run" },
-    { k: "Artifact contract", v: data.configs.resnet_mlp.schemaVersion, note: "metrics.json and test_predictions.csv" },
+    { k: "Seed", v: String(R.seed), note: "sampling, splitting and training" },
+    { k: "Split", v: "70 / 15 / 15", note: "stratified; identical indices" },
+    { k: "Split protocol", v: data.configs.resnet_mlp.splitProtocol, note: "recorded per run" },
+    { k: "Artifact contract", v: data.configs.resnet_mlp.schemaVersion, note: "metrics & predictions" },
     {
       k: "Train/test overlap",
       v: String(Math.max(...Object.values(data.budgets).map((b) => b.splitChecks.events_shared_by_train_and_test))),
-      note: `events shared at any budget, after removing ${int(R.duplicateRowsRemoved)} duplicates`,
+      note: `shared events after −${int(R.duplicateRowsRemoved)} dupes`,
     },
     {
       k: "Determinism",
       v: R.determinism.max_abs_probability_diff.toFixed(1),
-      note: "largest difference in test probability between two CPU trainings of the compact MLP",
+      note: "CPU compact-MLP repeatability diff",
     },
   ],
-  leakage: "The scaler is fitted on training rows only, thresholds and early stopping use validation only, and the test set is scored once.",
+  leakage: "Scaler fitted on training rows only; early stopping and cutoffs frozen on validation; test scored once.",
   limits: [
-    "The events are simulated. A higher score here is a better classifier on this benchmark, not evidence about a real detector.",
-    `About ${Math.round(b250.splitChecks.signal_fraction * 100)}% of events are signal, unlike a real rare-event search.`,
-    "One seed per budget: run-to-run variance is not measured, so differences below about 0.002 should not be ranked.",
-    `Training times come from one ${R.gpu} GPU and compare only within this run.`,
-    "At 2.5M events several deep runs reached the 60-epoch cap while still improving.",
-    "Network scores are less well calibrated than XGBoost's and would need recalibration before use as probabilities.",
+    { title: "Simulated events", body: "Higher score reflects classifier separation on UCI HIGGS, not real detector discovery." },
+    { title: `~${Math.round(b250.splitChecks.signal_fraction * 100)}% signal fraction`, body: "Balanced benchmark classes unlike a rare-event search." },
+    { title: `Single seed (${R.seed})`, body: "Run-to-run variance unmeasured; gaps below ~0.002 should not be ranked." },
+    { title: `One ${R.gpu} GPU`, body: "Training times compare strictly within this hardware benchmark." },
+    { title: "60-epoch cap at 2.5M", body: "Several deep runs hit the epoch limit while still improving." },
+    { title: "Calibration gap", body: "Neural scores lag XGBoost in calibration and need recalibration as probabilities." },
   ],
 };
 
@@ -207,16 +208,19 @@ const x25 = getRun("2.5m", "xgboost", "all");
 const rLow = getRun("2.5m", "resnet_mlp", "low_level");
 export const FINDINGS = [
   {
-    title: "The benchmark is reproducible end to end.",
-    body: "45 runs from one script and one seed, on deduplicated data, with no event shared between training and test.",
+    metric: "45 runs · 0 overlap",
+    title: "Reproducible end to end.",
+    body: `One seed (${R.seed}), deduplicated archive, shared splits and zero train/test overlap.`,
   },
   {
-    title: "Architecture and feature representation change the result.",
-    body: `At 2.5M events the residual MLP reaches ${f4(r25.rocAuc)} ROC-AUC against ${f4(x25.rocAuc)} for XGBoost, and ${f4(rLow.rocAuc)} from the low-level features alone.`,
+    metric: `${f4(r25.rocAuc)} vs ${f4(x25.rocAuc)}`,
+    title: "Architecture & scale matter.",
+    body: `At 2.5M, Residual MLP leads XGBoost (${f4(rLow.rocAuc)} from raw kinematics alone), while XGBoost excels in speed & calibration.`,
   },
   {
-    title: "The results are inspectable.",
-    body: "Every run exports its metrics and test predictions, and the dashboard shows exactly those files.",
+    metric: "15 run packages",
+    title: "Fully inspectable.",
+    body: "Every metric and prediction file opens directly inside the Streamlit workbench.",
   },
 ];
 
@@ -224,4 +228,31 @@ export const REFERENCES = [
   "Baldi, Sadowski and Whiteson, Nature Communications 5, 4308 (2014)",
   "Gorishniy, Rubachev, Khrulkov and Babenko, NeurIPS (2021)",
   "UCI Machine Learning Repository, HIGGS, dataset 280",
+];
+
+export const VIVA_PREP: { q: string; a: string }[] = [
+  {
+    q: "Why does the Residual MLP outperform the ordinary Deep MLP despite similar optimization?",
+    a: `Each 256-wide block adds an identity shortcut (y = x + F(x)), letting gradients flow directly across 4 blocks (1,061,889 params) while layers learn refinements rather than re-encoding all features—yielding ${f4(r25.rocAuc)} vs ${f4(getRun("2.5m", "deep_mlp", "all").rocAuc)} ROC-AUC at 2.5M.`,
+  },
+  {
+    q: "How do the neural networks learn and update weights during training?",
+    a: "Standardized 1,024-event mini-batches pass through Linear + BatchNorm + ReLU + Dropout layers to a scalar logit z; training optimizes binary cross-entropy via backpropagation and AdamW (lr 0.001, decoupled weight decay), with cosine scheduling on Deep and Residual MLPs.",
+  },
+  {
+    q: "What proves deep networks learn representations beyond hand-crafted features?",
+    a: `At 2.5M events using only the 21 raw kinematic features, Residual MLP reaches ${f4(rLow.rocAuc)} ROC-AUC—exceeding XGBoost given all 28 features including invariant masses (${f4(x25.rocAuc)}).`,
+  },
+  {
+    q: "How did you prevent data leakage and overfitting?",
+    a: `We removed ${int(R.duplicateRowsRemoved)} duplicate rows before splitting 70/15/15 with seed ${R.seed} (0 shared train/test events), fit StandardScaler on training rows only, regularized with BatchNorm, Dropout (0.10–0.20) and weight decay, and applied validation early stopping (patience 5/8).`,
+  },
+  {
+    q: "Why is XGBoost still competitive despite lower ROC-AUC at 2.5M?",
+    a: `At 250k events XGBoost trains in 2.4s vs 28.6s for Residual MLP (0.8188 vs 0.8339 ROC-AUC), and at 2.5M XGBoost achieves much lower Expected Calibration Error (${f4(x25.ece)} vs ${f4(r25.ece)}), making it stronger where speed or probability calibration matters.`,
+  },
+  {
+    q: "What are the two biggest scientific caveats of this benchmark?",
+    a: "First, UCI HIGGS events are simulated Monte Carlo with ~54% signal balance—not real detector discoveries or rare-event ratios. Second, each budget uses one seed (42), so variance is unmeasured and several 2.5M deep runs hit the 60-epoch cap.",
+  },
 ];

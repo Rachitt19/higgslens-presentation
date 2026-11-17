@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { SceneProps } from "../App";
 import { MODELS } from "../content";
-import { CompareDeepResidual, ModelDiagram } from "../components/diagrams";
+import { CompareDeepResidual, LearningVisualizer, ModelDiagram } from "../components/diagrams";
 import { Segmented } from "../components/common";
 import { MODEL, MODEL_ORDER, type ModelId } from "../lib/data";
 
@@ -13,26 +13,25 @@ const CATEGORY: Record<ModelId, string> = {
   resnet_mlp: "Residual neural network",
 };
 
-type ViewMode = "single" | "compare";
+type ViewMode = "single" | "compare" | "learn";
 
-export default function S05Models({ step, setStep }: SceneProps) {
+export default function S05Models({ step, setStep, paused, skipped }: SceneProps) {
   const [mode, setMode] = useState<ViewMode>("single");
   const id = MODEL_ORDER[step];
   const m = MODELS[id];
-  const isCompare = mode === "compare";
 
   return (
     <div className="s05">
       <div className="s05-list">
-        <span className="tag">Model architectures</span>
+        <span className="tag">Model architectures &amp; training</span>
         <h2 className="headline">Five models, from a line to a residual network.</h2>
         <ol>
           {MODEL_ORDER.map((mid, i) => (
             <li key={mid}>
               <button
                 type="button"
-                className={!isCompare && i === step ? "is-on" : ""}
-                aria-current={!isCompare && i === step}
+                className={mode === "single" && i === step ? "is-on" : ""}
+                aria-current={mode === "single" && i === step}
                 onClick={() => {
                   setMode("single");
                   setStep(i);
@@ -47,17 +46,26 @@ export default function S05Models({ step, setStep }: SceneProps) {
         <div className="s05-compare-cta">
           <button
             type="button"
-            className={`s05-compare-btn ${isCompare ? "is-on" : ""}`}
-            aria-pressed={isCompare}
+            className={`s05-compare-btn ${mode === "compare" ? "is-on" : ""}`}
+            aria-pressed={mode === "compare"}
             onClick={() => setMode((v) => (v === "compare" ? "single" : "compare"))}
           >
             <span className="num">vs</span>
             <span>Compare Deep MLP &amp; Residual MLP</span>
           </button>
+          <button
+            type="button"
+            className={`s05-compare-btn s05-learn-btn ${mode === "learn" ? "is-on" : ""}`}
+            aria-pressed={mode === "learn"}
+            onClick={() => setMode((v) => (v === "learn" ? "single" : "learn"))}
+          >
+            <span className="num">∇L</span>
+            <span>How Our Network Learns</span>
+          </button>
         </div>
       </div>
 
-      {isCompare ? (
+      {mode === "compare" && (
         <div className="s05-detail" key="compare">
           <div className="s05-detail-head">
             <div>
@@ -73,6 +81,7 @@ export default function S05Models({ step, setStep }: SceneProps) {
               options={[
                 { id: "single", label: "Selected" },
                 { id: "compare", label: "Deep vs Residual" },
+                { id: "learn", label: "How It Learns" },
               ]}
             />
           </div>
@@ -94,7 +103,35 @@ export default function S05Models({ step, setStep }: SceneProps) {
             </div>
           </div>
         </div>
-      ) : (
+      )}
+
+      {mode === "learn" && (
+        <div className="s05-detail" key="learn">
+          <div className="s05-detail-head">
+            <div>
+              <span className="s05-cat" style={{ color: "#F0B95A" }}>
+                Forward pass · Loss · Backprop · AdamW
+              </span>
+              <p className="s05-role">How our neural networks learn</p>
+            </div>
+            <Segmented
+              label="Diagram view"
+              value={mode}
+              onChange={setMode}
+              options={[
+                { id: "single", label: "Selected" },
+                { id: "compare", label: "Deep vs Residual" },
+                { id: "learn", label: "How It Learns" },
+              ]}
+            />
+          </div>
+          <div className="s05-diagram s05-diagram--learn">
+            <LearningVisualizer paused={paused} skipped={skipped} />
+          </div>
+        </div>
+      )}
+
+      {mode === "single" && (
         <div className="s05-detail" key={id}>
           <div className="s05-detail-head">
             <div>
@@ -110,6 +147,7 @@ export default function S05Models({ step, setStep }: SceneProps) {
               options={[
                 { id: "single", label: "Selected" },
                 { id: "compare", label: "Deep vs Residual" },
+                { id: "learn", label: "How It Learns" },
               ]}
             />
           </div>

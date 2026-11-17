@@ -6,6 +6,8 @@ export interface Track {
   points: [number, number, number][]; // x = beam axis, (y, z) = transverse plane
   color: [number, number, number];
   delay: number; // 0..1, staggered start
+  clusterIndex: number; // 0..3 conceptual jet cluster, -1 for isolated lepton/soft
+  isBJet: boolean;
 }
 
 function mulberry32(seed: number) {
@@ -26,23 +28,39 @@ const GOLD: [number, number, number] = [0.941, 0.725, 0.353];    // #F0B95A
 const WHITE: [number, number, number] = [0.957, 0.945, 0.922];   // #F4F1EB
 const SILVER: [number, number, number] = [0.631, 0.631, 0.667];  // #A1A1AA
 
+const JET_AXES = [
+  { eta: 0.75, phi: 0.55, b: true },
+  { eta: -0.65, phi: 2.25, b: true },
+  { eta: 1.05, phi: 3.85, b: false },
+  { eta: -0.95, phi: 5.15, b: false },
+];
+
 const SOFT_PALETTE: [number, number, number][] = [VIOLET, VIOLET, SILVER, SILVER, MAGENTA];
 const STIFF_PALETTE: [number, number, number][] = [GOLD, GOLD, WHITE, MAGENTA, VIOLET];
 
 export const STEPS = 96;
 
-export function generateTracks(count = 165, seed = 42): Track[] {
+export function generateTracks(count = 175, seed = 42): Track[] {
   const rnd = mulberry32(seed);
   const tracks: Track[] = [];
   for (let i = 0; i < count; i++) {
-    const eta = (rnd() - 0.5) * 4.0;
-    let phi = rnd() * Math.PI * 2;
-    const pt = 0.16 + Math.pow(rnd(), 2.25) * 3.4; // most tracks soft, a few stiff
+    // ~65% clustered into 4 conceptual jet cones; ~35% wide-angle tracks & isolated lepton candidates
+    const inJet = i < Math.floor(count * 0.66);
+    const clusterIndex = inJet ? i % 4 : -1;
+    const axis = inJet ? JET_AXES[clusterIndex] : null;
+    const isBJet = axis ? axis.b : false;
+
+    const eta = axis ? axis.eta + (rnd() - 0.5) * 0.65 : (rnd() - 0.5) * 4.0;
+    let phi = axis ? axis.phi + (rnd() - 0.5) * 0.42 : rnd() * Math.PI * 2;
+    const pt = axis
+      ? 0.35 + Math.pow(rnd(), 1.8) * 3.1
+      : 0.16 + Math.pow(rnd(), 2.2) * 3.4;
+
     const charge = rnd() < 0.5 ? -1 : 1;
-    const radius = 0.52 + pt * 3.6; // curvature radius in a conceptual solenoidal field
-    const length = 2.6 + rnd() * 4.8;
+    const radius = 0.55 + pt * 3.55; // curvature radius in a conceptual solenoidal field
+    const length = axis ? 3.0 + rnd() * 4.4 : 2.5 + rnd() * 4.8;
     const ds = length / STEPS;
-    const dx = Math.sinh(eta) * 0.4;
+    const dx = Math.sinh(eta) * 0.38;
     let x = 0;
     let y = 0;
     let z = 0;
@@ -54,11 +72,18 @@ export function generateTracks(count = 165, seed = 42): Track[] {
       x += dx * ds;
       points.push([x, y, z]);
     }
+
     const stiff = pt > 1.55;
-    const color = stiff
-      ? STIFF_PALETTE[Math.floor(rnd() * STIFF_PALETTE.length)]
-      : SOFT_PALETTE[Math.floor(rnd() * SOFT_PALETTE.length)];
-    tracks.push({ points, color, delay: rnd() * 0.34 });
+    let color: [number, number, number];
+    if (isBJet && rnd() < 0.55) {
+      color = rnd() < 0.65 ? MAGENTA : GOLD;
+    } else if (stiff) {
+      color = STIFF_PALETTE[Math.floor(rnd() * STIFF_PALETTE.length)];
+    } else {
+      color = SOFT_PALETTE[Math.floor(rnd() * SOFT_PALETTE.length)];
+    }
+
+    tracks.push({ points, color, delay: rnd() * 0.34, clusterIndex, isBJet });
   }
   return tracks;
 }

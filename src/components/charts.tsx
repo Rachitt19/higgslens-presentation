@@ -16,21 +16,26 @@ export function Leaderboard({ budget, group }: { budget: BudgetId; group: GroupI
         <span>ROC-AUC</span>
         <span>PR-AUC</span>
         <span>Brier</span>
+        <span>Acc.</span>
         <span>Train (s)</span>
       </div>
-      {rows.map((r, i) => (
-        <div className={`lb-row ${i === 0 ? "is-lead" : ""}`} key={r.run} style={{ animationDelay: `${0.15 + i * 0.16}s` }}>
-          <span className="num lb-rank">{i + 1}</span>
-          <span className="lb-name">{MODEL[r.model].label}</span>
-          <span className="lb-bar">
-            <i style={{ width: `${x(r.rocAuc)}%`, background: MODEL[r.model].color, animationDelay: `${0.3 + i * 0.16}s` }} />
-          </span>
-          <span className={`num ${i === 0 ? "lb-gold" : "lb-strong"}`}>{f4(r.rocAuc)}</span>
-          <span className="num">{f4(r.prAuc)}</span>
-          <span className="num">{f4(r.brier)}</span>
-          <span className="num">{r.trainSeconds.toFixed(1)}</span>
-        </div>
-      ))}
+      {rows.map((r, i) => {
+        const acc = data.accuracy[r.run];
+        return (
+          <div className={`lb-row ${i === 0 ? "is-lead" : ""}`} key={r.run} style={{ animationDelay: `${0.15 + i * 0.16}s` }}>
+            <span className="num lb-rank">{i + 1}</span>
+            <span className="lb-name">{MODEL[r.model].label}</span>
+            <span className="lb-bar">
+              <i style={{ width: `${x(r.rocAuc)}%`, background: MODEL[r.model].color, animationDelay: `${0.3 + i * 0.16}s` }} />
+            </span>
+            <span className={`num ${i === 0 ? "lb-gold" : "lb-strong"}`}>{f4(r.rocAuc)}</span>
+            <span className="num">{f4(r.prAuc)}</span>
+            <span className="num">{f4(r.brier)}</span>
+            <span className="num">{acc !== undefined ? `${(acc * 100).toFixed(1)}%` : "—"}</span>
+            <span className="num">{r.trainSeconds.toFixed(1)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -43,9 +48,18 @@ export function RocChart() {
   const y = lin(0, 1, m.t + S, m.t);
   const ticks = [0, 0.25, 0.5, 0.75, 1];
   const order = MODEL_ORDER.slice().sort((a, b) => getRun("250k", b, "all").rocAuc - getRun("250k", a, "all").rocAuc);
+  const bestPath = "M" + data.roc.resnet_mlp.map(([f, t]) => `${x(f).toFixed(1)},${y(t).toFixed(1)}`).join("L");
+  const areaPath = `${bestPath} L${x(1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`;
+
   return (
     <div className="roc">
       <svg viewBox={`0 0 ${m.l + S + m.r} ${m.t + S + m.b}`} role="img" aria-label="ROC curves for the five all-feature models at 250k events">
+        <defs>
+          <linearGradient id="roc-area-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#D946EF" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#D946EF" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
         <rect x={m.l} y={m.t} width={S} height={S} className="plot-surface" />
         {ticks.map((t) => (
           <g key={t}>
@@ -55,6 +69,9 @@ export function RocChart() {
             <text x={x(0) - 12} y={y(t) + 5} textAnchor="end" className="tick">{t}</text>
           </g>
         ))}
+        <path d={areaPath} fill="url(#roc-area-grad)" className="pt" style={{ animationDelay: "1.4s" }} />
+        <line x1={x(0)} y1={y(0.5)} x2={x(1)} y2={y(0.5)} className="chance" style={{ stroke: "#F0B95A", strokeOpacity: 0.4 }} />
+        <text x={x(0.76)} y={y(0.5) - 7} className="tick" style={{ fill: "#F0B95A", opacity: 0.85 }}>50% signal eff.</text>
         <line x1={x(0)} y1={y(0)} x2={x(1)} y2={y(1)} className="chance" />
         <text x={x(0.62)} y={y(0.56)} className="tick" transform={`rotate(-45 ${x(0.62)} ${y(0.56)})`}>chance</text>
         {MODEL_ORDER.map((id, i) => (
@@ -124,10 +141,22 @@ export function GroupDots({ budget }: { budget: BudgetId }) {
 }
 
 /* ---------------------------------------------------------------- scaling chart */
-export function ScalingChart({ group, reference }: { group: GroupId; reference?: { value: number; label: string } }) {
+export function ScalingChart({
+  group,
+  reference,
+  onBudgetFocus,
+}: {
+  group: GroupId;
+  reference?: { value: number; label: string };
+  onBudgetFocus?: (b: BudgetId) => void;
+}) {
   const [hover, setHover] = useState<BudgetId | null>(null);
   const [pinned, setPinned] = useState<BudgetId | null>(null);
   const activeBudget = hover ?? pinned;
+  const focus = (b: BudgetId | null) => {
+    setHover(b);
+    onBudgetFocus?.(b ?? pinned ?? "2.5m");
+  };
   const W = 980;
   const H = 532;
   const m = { l: 70, t: 28, r: 250, b: 74 };
@@ -158,7 +187,7 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
   }
 
   return (
-    <svg className="scaling" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Test ROC-AUC against sample size across three discrete budgets (250k, 1M, 2.5M), ${group} features`} onMouseLeave={() => setHover(null)}>
+    <svg className="scaling" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Test ROC-AUC against sample size across three discrete budgets (250k, 1M, 2.5M), ${group} features`} onMouseLeave={() => focus(null)}>
       <rect x={m.l} y={m.t} width={W - m.l - m.r} height={H - m.t - m.b} className="plot-surface" />
       {BUDGET_ORDER.map((b, i) => {
         const isActive = activeBudget === b;
@@ -234,11 +263,74 @@ export function ScalingChart({ group, reference }: { group: GroupId; reference?:
           height={H - m.b - m.t}
           fill="transparent"
           style={{ cursor: "pointer" }}
-          onMouseEnter={() => setHover(b)}
-          onClick={() => setPinned((p) => (p === b ? null : b))}
+          onMouseEnter={() => focus(b)}
+          onClick={() => {
+            const nextPin = pinned === b ? null : b;
+            setPinned(nextPin);
+            onBudgetFocus?.(nextPin ?? hover ?? "2.5m");
+          }}
         />
       ))}
     </svg>
+  );
+}
+
+/* ---------------------------------------------------------- calibration chart */
+export function CalibrationChart() {
+  const S = 540;
+  const m = { l: 88, t: 16, r: 16, b: 56 };
+  const x = lin(0, 1, m.l, m.l + S);
+  const y = lin(0, 1, m.t + S, m.t);
+  const ticks = [0, 0.25, 0.5, 0.75, 1];
+  const order = MODEL_ORDER.slice().sort((a, b) => getRun("250k", a, "all").ece - getRun("250k", b, "all").ece);
+  return (
+    <div className="roc">
+      <svg viewBox={`0 0 ${m.l + S + m.r} ${m.t + S + m.b}`} role="img" aria-label="10-bin reliability calibration curves at 250k events">
+        <rect x={m.l} y={m.t} width={S} height={S} className="plot-surface" />
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={x(t)} y1={y(0)} x2={x(t)} y2={y(1)} className="grid" />
+            <line x1={x(0)} y1={y(t)} x2={x(1)} y2={y(t)} className="grid" />
+            <text x={x(t)} y={y(0) + 24} textAnchor="middle" className="tick">{t}</text>
+            <text x={x(0) - 12} y={y(t) + 5} textAnchor="end" className="tick">{t}</text>
+          </g>
+        ))}
+        <line x1={x(0)} y1={y(0)} x2={x(1)} y2={y(1)} className="chance" />
+        <text x={x(0.58)} y={y(0.52)} className="tick" transform={`rotate(-45 ${x(0.58)} ${y(0.52)})`}>perfectly calibrated</text>
+        {MODEL_ORDER.map((id, i) => {
+          const bins = data.calibration[id];
+          return (
+            <g key={id}>
+              <path
+                d={"M" + bins.map((b) => `${x(b.predicted).toFixed(1)},${y(b.observed).toFixed(1)}`).join("L")}
+                pathLength={1}
+                className="curve"
+                stroke={MODEL[id].color}
+                style={{ animationDelay: `${0.18 + i * 0.28}s` }}
+              />
+              {bins.map((b, bi) => (
+                <circle key={bi} cx={x(b.predicted)} cy={y(b.observed)} r={3.5} fill={MODEL[id].color} stroke="var(--void)" strokeWidth={1.2} />
+              ))}
+            </g>
+          );
+        })}
+        <text x={x(0.5)} y={y(0) + 50} textAnchor="middle" className="axis-title">Mean predicted probability</text>
+        <text transform={`translate(18 ${y(0.5)}) rotate(-90)`} textAnchor="middle" className="axis-title">Observed signal fraction</text>
+      </svg>
+      <div className="legend">
+        <p className="legend-title">Expected Calibration Error (lower is better)</p>
+        {order.map((id, idx) => {
+          const r = getRun("250k", id, "all");
+          return (
+            <div key={id}>
+              <i style={{ background: MODEL[id].color }} />
+              <span>{MODEL[id].label}</span>
+              <b className={`num ${idx === 0 ? "is-gold" : ""}`}>ECE {f4(r.ece)}</b>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -251,16 +343,18 @@ export function CostBars({ budget }: { budget: BudgetId }) {
       <div className="cost-head">
         <span>Model</span>
         <span>Training time, seconds on one {data.run.gpu} GPU</span>
+        <span>Epochs</span>
         <span>ECE</span>
         <span>ROC-AUC</span>
       </div>
-      {rows.map((r: { model: ModelId; trainSeconds: number; ece: number; rocAuc: number }) => (
+      {rows.map((r: { model: ModelId; trainSeconds: number; epochs: number | null; ece: number; rocAuc: number }) => (
         <div className="cost-row" key={r.model}>
           <span>{MODEL[r.model].label}</span>
           <span className="cost-bar">
             <i style={{ width: `${Math.max(0.4, (r.trainSeconds / max) * 100)}%`, background: MODEL[r.model].color }} />
             <b className="num">{r.trainSeconds.toFixed(1)}</b>
           </span>
+          <span className="num">{r.epochs ?? "—"}</span>
           <span className="num">{f4(r.ece)}</span>
           <span className="num">{f4(r.rocAuc)}</span>
         </div>

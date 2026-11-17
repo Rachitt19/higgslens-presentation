@@ -2,13 +2,13 @@ import { useState } from "react";
 import type { SceneProps } from "../App";
 import { RESULTS } from "../content";
 import { CountUp, Segmented, StepTabs } from "../components/common";
-import { GroupDots, Leaderboard, RocChart } from "../components/charts";
+import { CalibrationChart, GroupDots, Leaderboard, RocChart } from "../components/charts";
 import { BUDGET_LABEL, BUDGET_ORDER, MODEL, data, f4, getRun, int, type BudgetId } from "../lib/data";
 
 const op = data.operatingPoints;
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
-export default function S06Results({ step, setStep }: SceneProps) {
+export default function S06Results({ step, setStep, skipped }: SceneProps) {
   const [budget, setBudget] = useState<BudgetId>("250k");
   const res250 = getRun("250k", "resnet_mlp", "all");
   const xgb250 = getRun("250k", "xgboost", "all");
@@ -23,7 +23,7 @@ export default function S06Results({ step, setStep }: SceneProps) {
         <dl>
           {RESULTS.hero.map((h, i) => (
             <div key={h.label}>
-              <dd><CountUp value={h.value} delay={200 + i * 250} /></dd>
+              <dd><CountUp value={h.value} delay={200 + i * 250} skipped={skipped} /></dd>
               <dt>{h.label}<span>{h.note}</span></dt>
             </div>
           ))}
@@ -77,6 +77,12 @@ export default function S06Results({ step, setStep }: SceneProps) {
                 <Segmented label="Sample size" value={budget} onChange={setBudget} options={BUDGET_ORDER.map((b) => ({ id: b, label: BUDGET_LABEL[b] }))} />
               </div>
               <GroupDots budget={budget} />
+            </>
+          )}
+          {step === 3 && (
+            <>
+              <CalibrationChart />
+              <p className="note">10-bin reliability diagram on the {int(data.budgets["250k"].splitChecks.split_sizes.test)} test events. XGBoost is best calibrated; neural logits need post-hoc recalibration as probabilities.</p>
             </>
           )}
         </div>

@@ -43,6 +43,7 @@ interface Benchmark {
   budgets: Record<BudgetId, { rows: number; splitChecks: SplitChecks; runs: Run[] }>;
   configs: Record<ModelId, { family: string; config: Record<string, unknown>; parameterCount: number | null; schemaVersion: string; splitProtocol: string }>;
   operatingPoints: Record<ModelId, { validationThreshold: number; testSignalEfficiency: number; testBackgroundRejection: number } | null>;
+  calibration: Record<ModelId, { predicted: number; observed: number }[]>;
   roc: Record<ModelId, [number, number][]>;
   accuracy: Record<string, number>;
   features: { name: string; group: "low_level" | "high_level"; description: string }[];
